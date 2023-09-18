@@ -11,6 +11,7 @@ import ru.practicum.dto.ResponseStatsDto;
 import ru.practicum.dto.StatHitDto;
 import ru.practicum.dto.StatsRequestDto;
 
+import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,9 +28,10 @@ public class StatsClient {
         this.client = WebClient.create(baseUrl);
     }
 
-    public void saveHits(String app, String uri, String ip, LocalDateTime timestamp) {
-        final StatHitDto endpointHit = new StatHitDto(app, uri, ip, timestamp);
-        log.info("Сохранена информации о том, что был отправлен запрос пользователем.", endpointHit);
+    public void saveHits(HttpServletRequest request) {
+        final StatHitDto endpointHit = new StatHitDto("ewm-service", request.getRequestURI(),
+                request.getRemoteAddr(), LocalDateTime.now());
+        log.info("Сохранена информации о том, что был отправлен запрос пользователем.");
         this.client.post()
                 .uri("/hit")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -39,7 +41,7 @@ public class StatsClient {
                 .block();
     }
 
-    public ResponseEntity<List<ResponseStatsDto>> getStats(StatsRequestDto statsRequestDto) {
+    public ResponseEntity<List<ResponseStatsDto>> getStats(StatsRequestDto statsRequestDto, String appName) {
         log.info("Получена статистика по посещениям.");
         return client.get()
                 .uri(uriBuilder -> uriBuilder
@@ -48,7 +50,7 @@ public class StatsClient {
                         .queryParam("end", statsRequestDto.getEnd())
                         .queryParam("uris", statsRequestDto.getUris())
                         .queryParam("unique", statsRequestDto.getIsUnique())
-                        .queryParam("app", statsRequestDto.getApp())
+                        .queryParam(appName)
                         .build())
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
