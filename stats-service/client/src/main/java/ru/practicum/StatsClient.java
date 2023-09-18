@@ -22,6 +22,8 @@ public class StatsClient {
 
     @Value("${stats.server.url}")
     private String baseUrl;
+    @Value("${ewm-service}")
+    private String app;
     private final WebClient client;
 
     public StatsClient() {
@@ -29,8 +31,9 @@ public class StatsClient {
     }
 
     public void saveHits(HttpServletRequest request) {
-        final StatHitDto endpointHit = new StatHitDto("ewm-service", request.getRequestURI(),
-                request.getRemoteAddr(), LocalDateTime.now());
+        LocalDateTime localDateTime = LocalDateTime.now();
+        final StatHitDto endpointHit = new StatHitDto(app, request.getRequestURI(),
+                request.getRemoteAddr(), localDateTime);
         log.info("Сохранена информации о том, что был отправлен запрос пользователем.");
         this.client.post()
                 .uri("/hit")
