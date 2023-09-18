@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import ru.practicum.dto.ResponseStatsDto;
 import ru.practicum.dto.StatHitDto;
+import ru.practicum.dto.StatsRequestDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,15 +39,16 @@ public class StatsClient {
                 .block();
     }
 
-    public ResponseEntity<List<ResponseStatsDto>> getStats(String start, String end, String[] uris, Boolean isUnique) {
-        log.info("Получена статистика по посещениям.", start, end, uris, isUnique);
+    public ResponseEntity<List<ResponseStatsDto>> getStats(StatsRequestDto statsRequestDto) {
+        log.info("Получена статистика по посещениям.");
         return client.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/stats")
-                        .queryParam("start", start)
-                        .queryParam("end", end)
-                        .queryParam("uris", uris)
-                        .queryParam("unique", isUnique)
+                        .queryParam("start", statsRequestDto.getStart())
+                        .queryParam("end", statsRequestDto.getEnd())
+                        .queryParam("uris", statsRequestDto.getUris())
+                        .queryParam("unique", statsRequestDto.getIsUnique())
+                        .queryParam("app", statsRequestDto.getApp())
                         .build())
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
