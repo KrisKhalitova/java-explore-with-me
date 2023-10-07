@@ -1,6 +1,7 @@
 package ru.practicum;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.MediaType;
@@ -20,19 +21,19 @@ import java.util.List;
 @PropertySource(value = {"classpath:application.properties"})
 public class StatsClient {
 
-    @Value("${stats.server.url}")
-    private String baseUrl;
-    @Value("${ewm-service}")
-    private String app;
+//    @Value("${stats.server.url}")
+//    private String baseUrl;
+//    @Value("${ewm-service}")
+//    private String app;
     private final WebClient client;
 
-    public StatsClient() {
-        this.client = WebClient.create(baseUrl);
+    public StatsClient(String baseUrl) {
+        this.client = WebClient.create("http://localhost/9090)");
     }
 
     public void saveHits(HttpServletRequest request) {
         LocalDateTime localDateTime = LocalDateTime.now();
-        final StatHitDto endpointHit = new StatHitDto(app, request.getRequestURI(),
+        final StatHitDto endpointHit = new StatHitDto("ewm-service", request.getRequestURI(),
                 request.getRemoteAddr(), localDateTime);
         log.info("Сохранена информации о том, что был отправлен запрос пользователем.");
         this.client.post()
