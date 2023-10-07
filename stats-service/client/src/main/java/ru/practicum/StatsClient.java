@@ -1,4 +1,4 @@
-package ru.practicum.ewm;
+package ru.practicum;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.PropertySource;
@@ -6,9 +6,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import ru.practicum.ewm.dto.ResponseStatsDto;
-import ru.practicum.ewm.dto.StatHitDto;
-import ru.practicum.ewm.dto.StatsRequestDto;
+import ru.practicum.dto.ResponseStatsDto;
+import ru.practicum.dto.StatHitDto;
+import ru.practicum.dto.StatsRequestDto;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;

@@ -2,7 +2,7 @@ package ru.practicum.ewm.util;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import ru.practicum.ewm.StatsClient;
+import ru.practicum.StatsClient;
 
 @Configuration
 public class AppConfig {

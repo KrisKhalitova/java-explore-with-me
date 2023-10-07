@@ -1,14 +1,14 @@
-package ru.practicum.ewm.service;
+package ru.practicum.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.ewm.dto.ResponseStatsDto;
-import ru.practicum.ewm.dto.StatHitDto;
-import ru.practicum.ewm.exception.ValidationException;
-import ru.practicum.ewm.mapper.StatMapper;
-import ru.practicum.ewm.repository.StatRepository;
+import ru.practicum.dto.ResponseStatsDto;
+import ru.practicum.dto.StatHitDto;
+import ru.practicum.exception.ValidationException;
+import ru.practicum.mapper.StatMapper;
+import ru.practicum.repository.StatRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;

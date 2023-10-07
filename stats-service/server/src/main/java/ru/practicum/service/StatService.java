@@ -1,8 +1,8 @@
-package ru.practicum.ewm.service;
+package ru.practicum.service;
 
 
-import ru.practicum.ewm.dto.ResponseStatsDto;
-import ru.practicum.ewm.dto.StatHitDto;
+import ru.practicum.dto.ResponseStatsDto;
+import ru.practicum.dto.StatHitDto;
 
 import java.time.LocalDateTime;
 import java.util.Collection;

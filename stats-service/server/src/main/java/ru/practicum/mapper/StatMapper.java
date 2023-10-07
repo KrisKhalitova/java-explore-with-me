@@ -1,8 +1,8 @@
-package ru.practicum.ewm.mapper;
+package ru.practicum.mapper;
 
 import lombok.experimental.UtilityClass;
-import ru.practicum.ewm.dto.StatHitDto;
-import ru.practicum.ewm.model.StatHit;
+import ru.practicum.dto.StatHitDto;
+import ru.practicum.model.StatHit;
 
 @UtilityClass
 public class StatMapper {
