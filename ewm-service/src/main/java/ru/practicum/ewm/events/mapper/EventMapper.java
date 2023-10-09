@@ -2,10 +2,15 @@ package ru.practicum.ewm.events.mapper;
 
 import lombok.experimental.UtilityClass;
 import ru.practicum.ewm.categories.mapper.CategoryMapper;
-import ru.practicum.ewm.events.dto.*;
+import ru.practicum.ewm.events.dto.EventFullDto;
+import ru.practicum.ewm.events.dto.EventShortDto;
+import ru.practicum.ewm.events.dto.NewEventDto;
 import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.locations.mapper.LocationMapper;
 import ru.practicum.ewm.users.mapper.UserMapper;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @UtilityClass
 public class EventMapper {
@@ -42,8 +47,8 @@ public class EventMapper {
                 .build();
     }
 
-    public EventFullDtoWithViews toEventFullDtoWithViews(Event event, Long views, Long confirmedRequests) {
-        return EventFullDtoWithViews.builder()
+    public EventFullDto toEventFullDtoWithViews(Event event, Long confirmedRequests, Long views) {
+        return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(CategoryMapper.toCategoryDto(event.getCategory()))
@@ -76,17 +81,17 @@ public class EventMapper {
                 .build();
     }
 
-    public EventShortDtoWithViews toEventShortDtoWithViews(Event event, Long views, Long confirmedRequests) {
-        return EventShortDtoWithViews.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(CategoryMapper.toCategoryDto(event.getCategory()))
-                .confirmedRequests(confirmedRequests)
-                .eventDate(event.getEventDate())
-                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                .paid(event.getPaid())
-                .title(event.getTitle())
-                .views(views)
-                .build();
+    public List<EventShortDto> toEventShortDtoList(List<Event> events) {
+        return events.stream()
+                .map(event -> EventShortDto.builder()
+                        .id(event.getId())
+                        .annotation(event.getAnnotation())
+                        .category(CategoryMapper.toCategoryDto(event.getCategory()))
+                        .eventDate(event.getEventDate())
+                        .initiator(UserMapper.toUserShortDto(event.getInitiator()))
+                        .paid(event.getPaid())
+                        .title(event.getTitle())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

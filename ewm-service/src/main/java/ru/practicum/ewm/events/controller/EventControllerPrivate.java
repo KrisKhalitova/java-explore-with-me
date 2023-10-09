@@ -12,7 +12,6 @@ import ru.practicum.ewm.events.service.EventService;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
-import ru.practicum.ewm.requests.service.RequestService;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Positive;
@@ -25,7 +24,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EventControllerPrivate {
     private final EventService eventService;
-    private final RequestService requestService;
 
     @PostMapping
     @ResponseStatus(value = HttpStatus.CREATED)

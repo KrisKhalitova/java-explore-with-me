@@ -5,11 +5,7 @@ import org.springframework.data.domain.Sort;
 
 public class EwmPageRequest extends PageRequest {
 
-    public static EwmPageRequest of(int from, int size) {
-        return new EwmPageRequest(from, size);
-    }
-
-    private EwmPageRequest(int from, int size) {
-        super(from / size, size, Sort.unsorted());
+    public EwmPageRequest(int page, int size, Sort sort) {
+        super(page / size, size, sort);
     }
 }

@@ -19,4 +19,6 @@ public interface RequestRepository extends JpaRepository<Request, Long> {
             "WHERE r.event.id IN (:ids) AND r.status = :status " +
             "GROUP BY (r.event)")
     List<ConfirmedRequests> findAllByEventIdInAndStatus(@Param("ids") List<Long> ids, @Param("status") RequestStatus status);
+
+    List<Request> findAllByEventIdAndEventInitiatorId(Long eventId, Long userId);
 }

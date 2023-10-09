@@ -22,13 +22,13 @@ public interface EventService {
 
     EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest);
 
-    EventFullDtoWithViews getEventById(Long eventId, HttpServletRequest request);
-
-    List<EventFullDtoWithViews> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from, Integer size);
+    EventFullDto getEventByPublic(Long eventId, HttpServletRequest request);
 
     List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart, LocalDateTime rangeEnd, boolean onlyAvailable, EventSortType sort, Pageable pageable, HttpServletRequest request);
 
     EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId, EventRequestStatusUpdateRequest request);
 
     List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId);
+
+    List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable);
 }

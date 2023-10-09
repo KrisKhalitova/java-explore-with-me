@@ -13,7 +13,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("/admin/compilations")
+@RequestMapping("compilations")
 public class CompilationControllerPublic {
     private final CompilationService compilationService;
 
@@ -24,9 +24,8 @@ public class CompilationControllerPublic {
         return compilationService.getCompilations(pinned, from, size);
     }
 
-    @GetMapping("/{compilationId}")
-    public CompilationDto getCompilationById(@PathVariable Long compilationId) {
-        return compilationService.getCompilationById(compilationId);
+    @GetMapping("/{compId}")
+    public CompilationDto getCompilationById(@PathVariable Long compId) {
+        return compilationService.getCompilationById(compId);
     }
-
 }

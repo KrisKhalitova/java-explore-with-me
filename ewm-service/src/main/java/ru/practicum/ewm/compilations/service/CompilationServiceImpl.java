@@ -1,6 +1,7 @@
 package ru.practicum.ewm.compilations.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.compilations.dto.CompilationDto;
@@ -9,14 +10,20 @@ import ru.practicum.ewm.compilations.dto.UpdateCompilationRequest;
 import ru.practicum.ewm.compilations.mapper.CompilationMapper;
 import ru.practicum.ewm.compilations.model.Compilation;
 import ru.practicum.ewm.compilations.repository.CompilationRepository;
+import ru.practicum.ewm.events.dto.EventShortDto;
+import ru.practicum.ewm.events.mapper.EventMapper;
 import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.events.repository.EventRepository;
+import ru.practicum.ewm.events.service.EventService;
 import ru.practicum.ewm.exceptions.NotFoundException;
 import ru.practicum.ewm.requests.repository.RequestRepository;
+import ru.practicum.ewm.util.EwmPageRequest;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Transactional
 @Service
@@ -26,17 +33,30 @@ public class CompilationServiceImpl implements CompilationService {
     private final CompilationRepository compilationRepository;
     private final RequestRepository requestRepository;
     private final EventRepository eventRepository;
+    private final EventService eventService;
 
     @Override
     public CompilationDto addNewCompilation(NewCompilationDto newCompilationDto) {
         Compilation compilation = CompilationMapper.toCompilation(newCompilationDto);
-        return  CompilationMapper.toCompilationDto(compilationRepository.save(compilation));
+        if (newCompilationDto.getPinned() != null) {
+            compilation.setPinned(newCompilationDto.getPinned());
+        } else {
+            compilation.setPinned(false);
+        }
+        List<Long> eventsId = newCompilationDto.getEvents();
+        Set<Event> events = new HashSet<>(eventRepository.findAllByIdIn(eventsId));
+        if (eventsId != null) {
+            compilation.setEvents(events);
+        }
+        List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
+        Compilation savedCompilation = compilationRepository.save(compilation);
+        return CompilationMapper.toCompilationDtoWithEvents(savedCompilation, eventsShortDto);
     }
 
     @Override
     public CompilationDto updateCompilationById(Long compId, UpdateCompilationRequest updatedCompilation) {
         Compilation toUpdate = compilationRepository.findById(compId).orElseThrow(() ->
-                new NotFoundException(String.format("Подборка событий не найдена")));
+                new NotFoundException("Подборка событий не найдена"));
 
         if (updatedCompilation.getTitle() != null && !updatedCompilation.getTitle().isBlank()) {
             toUpdate.setTitle(updatedCompilation.getTitle());
@@ -45,10 +65,10 @@ public class CompilationServiceImpl implements CompilationService {
             toUpdate.setPinned(updatedCompilation.getPinned());
         }
 
+        List<Long> eventsId = updatedCompilation.getEvents();
         if (updatedCompilation.getEvents() != null && !updatedCompilation.getEvents().isEmpty()) {
-            List<Long> eventsId = updatedCompilation.getEvents();
-            Collection<Event> events = eventRepository.findAllByIdIn(eventsId);
-            toUpdate.setEvents(new HashSet<>(events));
+            Set<Event> events = eventRepository.findAllByIdIn(eventsId);
+            toUpdate.setEvents(events);
         }
         Compilation updated = compilationRepository.save(toUpdate);
         return CompilationMapper.toCompilationDto(updated);
@@ -63,17 +83,26 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     public List<CompilationDto> getCompilations(Boolean pinned, Integer from, Integer size) {
-        return null;
+        if (pinned == null) {
+            List<CompilationDto> compilationDtosWithNullPinned = compilationRepository.findAll(new EwmPageRequest(from, size, Sort.unsorted())).getContent().stream()
+                    .map(CompilationMapper::toCompilationDto)
+                    .collect(Collectors.toList());
+            return compilationDtosWithNullPinned;
+        }
+        return compilationRepository.findAllByPinned(pinned, new EwmPageRequest(from, size, Sort.unsorted()))
+                .getContent().stream()
+                .map(CompilationMapper::toCompilationDto)
+                .collect(Collectors.toList());
     }
 
     @Override
     public CompilationDto getCompilationById(Long compId) {
-        Compilation compilation = getCompilation(compId);
-        return CompilationMapper.toCompilationDto(compilation);
-    }
-
-    private Compilation getCompilation(Long compilationId) {
-        return compilationRepository.findById(compilationId).orElseThrow(() ->
+        Compilation compilation = compilationRepository.findById(compId).orElseThrow(() ->
                 new NotFoundException("Подборка событий не найдена"));
+        List<Long> eventsId = compilation.getEvents().stream().map(Event::getId).collect(Collectors.toList());
+        Set<Event> events = new HashSet<>(eventRepository.findAllByIdIn(eventsId));
+        compilation.setEvents(events);
+        List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
+        return CompilationMapper.toCompilationDtoWithEvents(compilation, eventsShortDto);
     }
 }

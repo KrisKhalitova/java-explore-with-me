@@ -31,15 +31,17 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDto updateCategory(Long catId, CategoryDto categoryDto) {
         Category category = categoryRepository.findById(catId).orElseThrow(() ->
                 new NotFoundException("Категория не найдена."));
-        category.setName(categoryDto.getName());
+        if (categoryDto.getName() != null && !categoryDto.getName().isBlank()) {
+            category.setName(category.getName());
+        }
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
 
     @Override
     public void deleteCategory(Long catId) {
-        categoryRepository.findById(catId).orElseThrow(() ->
+        Category category = categoryRepository.findById(catId).orElseThrow(() ->
                 new NotFoundException("Категория не найдена."));
-        categoryRepository.deleteById(catId);
+        categoryRepository.delete(category);
     }
 
     @Override
