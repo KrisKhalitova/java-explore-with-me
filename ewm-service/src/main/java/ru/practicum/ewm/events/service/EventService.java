@@ -1,9 +1,6 @@
 package ru.practicum.ewm.events.service;
 
-import org.springframework.data.domain.Pageable;
 import ru.practicum.ewm.events.dto.*;
-import ru.practicum.ewm.events.model.EventSortType;
-import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
@@ -11,7 +8,6 @@ import ru.practicum.ewm.requests.dto.RequestDto;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 
 public interface EventService {
     EventFullDto addNewEvent(Long userId, NewEventDto newEventDto);
@@ -26,11 +22,16 @@ public interface EventService {
 
     EventFullDto getEventByPublic(Long eventId, HttpServletRequest request);
 
-    List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart, LocalDateTime rangeEnd, boolean onlyAvailable, EventSortType sort, Pageable pageable, HttpServletRequest request);
-
-    EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId, EventRequestStatusUpdateRequest request);
+    EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId,
+                                                        EventRequestStatusUpdateRequest request);
 
     List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId);
 
-    List<EventFullDto> getEventsByAdminParams(Set<Long> users, List<State> states, Set<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable);
+    List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
+                                              LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
+                                              Integer size);
+
+    List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
+                                  LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
+                                  Integer size, HttpServletRequest request);
 }

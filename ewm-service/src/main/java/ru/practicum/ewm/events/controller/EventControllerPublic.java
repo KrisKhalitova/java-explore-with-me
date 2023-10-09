@@ -6,9 +6,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.ewm.events.dto.EventFullDto;
 import ru.practicum.ewm.events.dto.EventShortDto;
-import ru.practicum.ewm.events.model.EventSortType;
 import ru.practicum.ewm.events.service.EventService;
-import ru.practicum.ewm.util.EwmPageRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.Positive;
@@ -24,19 +22,24 @@ public class EventControllerPublic {
     private final EventService eventService;
 
     @GetMapping
-    public List<EventShortDto> getEvents(
-            @RequestParam(required = false) String text,
-            @RequestParam(required = false) List<Long> categories,
-            @RequestParam(required = false) Boolean paid,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeStart,
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime rangeEnd,
-            @RequestParam(defaultValue = "false") Boolean onlyAvailable,
-            @RequestParam(required = false) EventSortType sort,
-            @RequestParam(value = "from", defaultValue = "0") @PositiveOrZero Integer from,
-            @RequestParam(value = "from", defaultValue = "10") @Positive Integer size,
-            HttpServletRequest request) {
+    public List<EventShortDto> getEvents(@RequestParam(required = false) String text,
+                                         @RequestParam(required = false) List<Long> categories,
+                                         @RequestParam(required = false) Boolean paid,
+                                         @RequestParam(required = false)
+                                         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                                         LocalDateTime rangeStart,
+                                         @RequestParam(required = false)
+                                         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                                         LocalDateTime rangeEnd,
+                                         @RequestParam(defaultValue = "false") Boolean onlyAvailable,
+                                         @RequestParam(defaultValue = "EVENT_DATE") String sort,
+                                         @RequestParam(value = "from", defaultValue = "0") @PositiveOrZero
+                                         Integer from,
+                                         @RequestParam(value = "size", defaultValue = "10") @Positive
+                                         Integer size,
+                                         HttpServletRequest request) {
         return eventService.getEvents(text, categories, paid, rangeStart, rangeEnd, onlyAvailable,
-                sort, EwmPageRequest.of(from, size), request);
+                sort, from, size, request);
     }
 
     @GetMapping("/{eventId}")

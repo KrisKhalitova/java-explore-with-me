@@ -8,7 +8,6 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,10 @@ import ru.practicum.ewm.categories.repository.CategoryRepository;
 import ru.practicum.ewm.categories.service.CategoryService;
 import ru.practicum.ewm.events.dto.*;
 import ru.practicum.ewm.events.mapper.EventMapper;
-import ru.practicum.ewm.events.model.*;
+import ru.practicum.ewm.events.model.Event;
+import ru.practicum.ewm.events.model.State;
+import ru.practicum.ewm.events.model.StateActionAdmin;
+import ru.practicum.ewm.events.model.StateActionPrivate;
 import ru.practicum.ewm.events.repository.EventRepository;
 import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
@@ -221,9 +223,10 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
-                                         LocalDateTime rangeEnd, boolean onlyAvailable, EventSortType sort,
-                                         Pageable pageable, HttpServletRequest request) {
-        return null;
+                                         LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
+                                         Integer size, HttpServletRequest request) {
+        List<EventShortDto> events = new ArrayList<>();
+        return events;
     }
 
     @Override
@@ -306,9 +309,11 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventFullDto> getEventsByAdminParams(Set<Long> users, List<State> states, Set<Long> categories,
-                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable) {
-        return null;
+    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
+                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
+                                                     Integer size) {
+        List<EventFullDto> list = new ArrayList<>();
+        return list;
     }
 
     private void checkActualTime(LocalDateTime eventTime) {
