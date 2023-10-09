@@ -206,7 +206,7 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findById(eventId).orElseThrow(() ->
                 new NotFoundException("Событие не найдено."));
         if (!event.getState().equals(PUBLISHED)) {
-            throw new ConflictException("Событие не опубликовано.");
+            throw new NotFoundException("Событие не опубликовано.");
         }
         return EventMapper.toEventFullDto(event);
     }
@@ -271,6 +271,26 @@ public class EventServiceImpl implements EventService {
                 .build();
     }
 
+    @Override
+    public List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId) {
+        userRepository.findById(userId).orElseThrow(() ->
+                new NotFoundException("Пользователь не найден."));
+        eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Событие не найдено."));
+        return requestRepository.findAllByEventIdAndEventInitiatorId(eventId, userId)
+                .stream()
+                .map(RequestMapper::toRequestDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
+                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
+                                                     Integer size) {
+        List<EventFullDto> list = new ArrayList<>();
+        return list;
+    }
+
     private void setStatus(Collection<Request> requests, RequestStatus status, long freePlaces) {
         if (status.equals(RequestStatus.CONFIRMED)) {
             for (Request request : requests) {
@@ -294,26 +314,6 @@ public class EventServiceImpl implements EventService {
         } else {
             throw new ConflictException("Вы должны либо одобрить - ПОДТВЕРЖДЕНО или отклонить - ОТКЛОНЕНА заявка");
         }
-    }
-
-    @Override
-    public List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId) {
-        userRepository.findById(userId).orElseThrow(() ->
-                new NotFoundException("Пользователь не найден."));
-        eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Событие не найдено."));
-        return requestRepository.findAllByEventIdAndEventInitiatorId(eventId, userId)
-                .stream()
-                .map(RequestMapper::toRequestDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
-                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
-                                                     Integer size) {
-        List<EventFullDto> list = new ArrayList<>();
-        return list;
     }
 
     private void checkActualTime(LocalDateTime eventTime) {
@@ -351,6 +351,7 @@ public class EventServiceImpl implements EventService {
                 .start(start)
                 .end(end)
                 .uris(uris)
+                .isUnique(unique)
                 .build();
         ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto, app);
         try {
@@ -358,13 +359,5 @@ public class EventServiceImpl implements EventService {
         } catch (JsonProcessingException e) {
             throw new ValidationException(e.getMessage());
         }
-    }
-
-    private void putStats(Map<Long, Long> views, List<ResponseStatsDto> stats) {
-        stats.forEach(stat -> {
-            Long eventId = Long.parseLong(stat.getUri()
-                    .split("/", 0)[2]);
-            views.put(eventId, views.getOrDefault(eventId, 0L) + stat.getHits());
-        });
     }
 }

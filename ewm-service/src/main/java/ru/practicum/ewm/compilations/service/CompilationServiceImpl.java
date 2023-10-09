@@ -15,7 +15,6 @@ import ru.practicum.ewm.events.mapper.EventMapper;
 import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.events.repository.EventRepository;
 import ru.practicum.ewm.exceptions.NotFoundException;
-import ru.practicum.ewm.exceptions.ValidationException;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -38,9 +37,6 @@ public class CompilationServiceImpl implements CompilationService {
             compilation.setPinned(newCompilationDto.getPinned());
         } else {
             compilation.setPinned(false);
-        }
-        if (newCompilationDto.getTitle().length() > 50) {
-            throw new ValidationException("Длина title не может быть больше 50.");
         }
         List<Long> eventsId = newCompilationDto.getEvents();
         Set<Event> events = new HashSet<>(eventRepository.findAllByIdIn(eventsId));
