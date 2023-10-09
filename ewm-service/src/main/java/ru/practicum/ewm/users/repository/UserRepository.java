@@ -9,4 +9,6 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findAllByIdIn(List<Long> userIds, Pageable pageable);
+
+    boolean existsByName(String name);
 }

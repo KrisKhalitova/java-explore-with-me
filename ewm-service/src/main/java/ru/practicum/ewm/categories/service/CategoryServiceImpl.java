@@ -9,6 +9,8 @@ import ru.practicum.ewm.categories.dto.NewCategoryDto;
 import ru.practicum.ewm.categories.mapper.CategoryMapper;
 import ru.practicum.ewm.categories.model.Category;
 import ru.practicum.ewm.categories.repository.CategoryRepository;
+import ru.practicum.ewm.events.repository.EventRepository;
+import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
 
 import java.util.List;
@@ -20,9 +22,13 @@ import java.util.stream.Collectors;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final EventRepository eventRepository;
 
     @Override
     public CategoryDto addNewCategory(NewCategoryDto newCategoryDto) {
+        if (categoryRepository.existsByName(newCategoryDto.getName())) {
+            throw new ConflictException("Имя пользователя уже существует");
+        }
         Category category = CategoryMapper.toCategoryFromNewCategoryDto(newCategoryDto);
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
@@ -31,6 +37,9 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDto updateCategory(Long catId, CategoryDto categoryDto) {
         Category category = categoryRepository.findById(catId).orElseThrow(() ->
                 new NotFoundException("Категория не найдена."));
+        if (categoryRepository.existsByName(categoryDto.getName())) {
+            throw new ConflictException("Имя пользователя уже существует");
+        }
         if (categoryDto.getName() != null && !categoryDto.getName().isBlank()) {
             category.setName(category.getName());
         }
@@ -41,7 +50,13 @@ public class CategoryServiceImpl implements CategoryService {
     public void deleteCategory(Long catId) {
         Category category = categoryRepository.findById(catId).orElseThrow(() ->
                 new NotFoundException("Категория не найдена."));
-        categoryRepository.delete(category);
+        boolean isExist = eventRepository.existsByCategoryId(catId);
+
+        if (isExist) {
+            throw new ConflictException("Категория не пуста.");
+        } else {
+            categoryRepository.delete(category);
+        }
     }
 
     @Override

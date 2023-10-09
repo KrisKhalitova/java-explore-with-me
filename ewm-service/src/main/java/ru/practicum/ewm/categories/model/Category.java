@@ -1,6 +1,7 @@
 package ru.practicum.ewm.categories.model;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -11,6 +12,7 @@ import javax.persistence.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "categories")
+@Builder
 public class Category {
 
     @Id

@@ -7,8 +7,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.events.repository.EventRepository;
+import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
-import ru.practicum.ewm.exceptions.ValidationException;
 import ru.practicum.ewm.requests.dto.RequestDto;
 import ru.practicum.ewm.requests.mapper.RequestMapper;
 import ru.practicum.ewm.requests.model.Request;
@@ -36,16 +36,19 @@ public class RequestServiceImpl implements RequestService {
                 new NotFoundException("Пользователь не найден"));
         Event event = eventRepository.findById(eventId).orElseThrow(() ->
                 new NotFoundException("Событие не найдено."));
+        if (requestRepository.existsByRequesterId(userId)) {
+            throw new ConflictException("Невозможно повторно добавить запрос.");
+        }
         if (event.getInitiator().getId().equals(user.getId())) {
-            throw new ValidationException("Инициатор события не может создать запрос на участие в событии.");
+            throw new ConflictException("Инициатор события не может создать запрос на участие в событии.");
         }
         if (!event.getState().equals(State.PUBLISHED)) {
-            throw new ValidationException("Невозможно участвовать в неопубликованном событии.");
+            throw new ConflictException("Невозможно участвовать в неопубликованном событии.");
         }
         Long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId,
                 RequestStatus.CONFIRMED);
         if (event.getParticipantLimit() <= confirmedRequests && event.getParticipantLimit() != 0) {
-            throw new ValidationException(("Лимит запрос превышен."));
+            throw new ConflictException(("Лимит запрос превышен."));
         }
         Request request = Request.builder()
                 .created(LocalDateTime.now())
@@ -61,14 +64,13 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public RequestDto cancelRequest(Long userId, Long requestId) {
         userRepository.findById(userId).orElseThrow(() ->
-                new NotFoundException(String.format("Пользователь не найден")));
+                new NotFoundException("Пользователь не найден"));
 
         Request request = requestRepository.findById(requestId).orElseThrow(() ->
-                new NotFoundException(String.format("Запрос не найден")));
+                new NotFoundException("Запрос не найден"));
 
         if (!request.getRequester().getId().equals(userId)) {
-            throw new ValidationException(
-                    String.format("Пользователь не является участником."));
+            throw new ConflictException("Пользователь не является участником.");
         }
         request.setStatus(RequestStatus.CANCELED);
 
@@ -78,7 +80,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<RequestDto> getRequestsByUser(Long userId) {
         userRepository.findById(userId).orElseThrow(() ->
-                new NotFoundException(String.format("Пользователь не найден")));
+                new NotFoundException("Пользователь не найден"));
         return RequestMapper.toRequestDtoList(requestRepository.findAllByRequesterId(userId));
     }
 }

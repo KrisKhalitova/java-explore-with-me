@@ -23,6 +23,7 @@ import ru.practicum.ewm.events.dto.*;
 import ru.practicum.ewm.events.mapper.EventMapper;
 import ru.practicum.ewm.events.model.*;
 import ru.practicum.ewm.events.repository.EventRepository;
+import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
 import ru.practicum.ewm.exceptions.ValidationException;
 import ru.practicum.ewm.locations.mapper.LocationMapper;
@@ -95,7 +96,7 @@ public class EventServiceImpl implements EventService {
     public EventFullDto updateEventByOwner(Long userId, Long eventId, UpdateEventUserRequest updateEvent) {
         Event event = getEvent(eventId, userId);
         if (event.getState() == State.PUBLISHED) {
-            throw new ValidationException("Опубликованное событие не может быть изменено.");
+            throw new ConflictException("Опубликованное событие не может быть изменено.");
         }
         String annotation = updateEvent.getAnnotation();
         if (annotation != null && !annotation.isBlank()) {
@@ -148,10 +149,10 @@ public class EventServiceImpl implements EventService {
         if (updateEvent.getStateAction() != null) {
             StateActionAdmin stateAction = StateActionAdmin.valueOf(updateEvent.getStateAction());
             if (!event.getState().equals(State.PENDING) && stateAction.equals(StateActionAdmin.PUBLISH_EVENT)) {
-                throw new ValidationException("Событие не может быть опубликовано.");
+                throw new ConflictException("Событие не может быть опубликовано.");
             }
             if (event.getState().equals(State.PUBLISHED) && stateAction.equals(StateActionAdmin.REJECT_EVENT)) {
-                throw new ValidationException("Событие не может быть отклонено, т.к. оно уже опубликовано.");
+                throw new ConflictException("Событие не может быть отклонено, т.к. оно уже опубликовано.");
             }
             if (stateAction.equals(StateActionAdmin.PUBLISH_EVENT)) {
                 event.setState(State.PUBLISHED);
@@ -239,7 +240,7 @@ public class EventServiceImpl implements EventService {
 
         RequestStatus status = RequestStatus.valueOf(String.valueOf(request.getStatus()));
         if (status.equals(RequestStatus.CONFIRMED) && freePlaces <= 0) {
-            throw new ValidationException("Лимит запросов к участию исчерпан.");
+            throw new ConflictException("Лимит запросов к участию исчерпан.");
         }
         List<Request> requests = requestRepository.findAllByEventIdAndEventInitiatorIdAndIdIn(eventId,
                 userId, request.getRequestIds());
@@ -271,7 +272,7 @@ public class EventServiceImpl implements EventService {
         if (status.equals(RequestStatus.CONFIRMED)) {
             for (Request request : requests) {
                 if (!request.getStatus().equals(RequestStatus.PENDING)) {
-                    throw new ValidationException("Статус запроса должен быть ожидание");
+                    throw new ConflictException("Статус запроса должен быть ожидание");
                 }
                 if (freePlaces > 0) {
                     request.setStatus(RequestStatus.CONFIRMED);
@@ -283,12 +284,12 @@ public class EventServiceImpl implements EventService {
         } else if (status.equals(RequestStatus.REJECTED)) {
             requests.forEach(request -> {
                 if (!request.getStatus().equals(RequestStatus.PENDING)) {
-                    throw new ValidationException("Статус запроса должен быть ожидание");
+                    throw new ConflictException("Статус запроса должен быть ожидание");
                 }
                 request.setStatus(RequestStatus.REJECTED);
             });
         } else {
-            throw new ValidationException("Вы должны либо одобрить - ПОДТВЕРЖДЕНО или отклонить - ОТКЛОНЕНА заявка");
+            throw new ConflictException("Вы должны либо одобрить - ПОДТВЕРЖДЕНО или отклонить - ОТКЛОНЕНА заявка");
         }
     }
 

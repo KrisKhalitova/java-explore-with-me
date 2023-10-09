@@ -31,4 +31,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                             @Param("rangeStart") LocalDateTime rangeStart,
                             @Param("rangeEnd") LocalDateTime rangeEnd,
                             Pageable pageable);
+
+    boolean existsByCategoryId(Long catId);
 }

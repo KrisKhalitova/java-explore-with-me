@@ -5,6 +5,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
 import ru.practicum.ewm.users.dto.NewUserRequest;
 import ru.practicum.ewm.users.dto.UserDto;
@@ -26,6 +27,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDto addNewUser(NewUserRequest newUserRequest) {
+        if (userRepository.existsByName(newUserRequest.getName())) {
+            throw new ConflictException("Имя пользователя уже существует");
+        }
         User user = UserMapper.toUser(newUserRequest);
         return UserMapper.toUserDto(userRepository.save(user));
     }
