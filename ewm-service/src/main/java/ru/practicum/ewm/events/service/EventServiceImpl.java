@@ -47,6 +47,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static ru.practicum.ewm.events.model.State.PUBLISHED;
 import static ru.practicum.ewm.events.model.StateActionPrivate.CANCEL_REVIEW;
 import static ru.practicum.ewm.events.model.StateActionPrivate.SEND_TO_REVIEW;
 import static ru.practicum.ewm.requests.model.RequestStatus.CONFIRMED;
@@ -67,7 +68,7 @@ public class EventServiceImpl implements EventService {
     final StatsClient statsClient;
     final ObjectMapper mapper = new ObjectMapper();
     @Value("${app}")
-    String appName;
+    private String app;
 
     @Override
     public EventFullDto addNewEvent(Long userId, NewEventDto newEventDto) {
@@ -97,7 +98,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventFullDto updateEventByOwner(Long userId, Long eventId, UpdateEventUserRequest updateEvent) {
         Event event = getEvent(eventId, userId);
-        if (event.getState() == State.PUBLISHED) {
+        if (event.getState() == PUBLISHED) {
             throw new ConflictException("Опубликованное событие не может быть изменено.");
         }
         String annotation = updateEvent.getAnnotation();
@@ -153,11 +154,11 @@ public class EventServiceImpl implements EventService {
             if (!event.getState().equals(State.PENDING) && stateAction.equals(StateActionAdmin.PUBLISH_EVENT)) {
                 throw new ConflictException("Событие не может быть опубликовано.");
             }
-            if (event.getState().equals(State.PUBLISHED) && stateAction.equals(StateActionAdmin.REJECT_EVENT)) {
+            if (event.getState().equals(PUBLISHED) && stateAction.equals(StateActionAdmin.REJECT_EVENT)) {
                 throw new ConflictException("Событие не может быть отклонено, т.к. оно уже опубликовано.");
             }
             if (stateAction.equals(StateActionAdmin.PUBLISH_EVENT)) {
-                event.setState(State.PUBLISHED);
+                event.setState(PUBLISHED);
                 event.setPublishedOn(LocalDateTime.now());
             } else if (stateAction.equals(StateActionAdmin.REJECT_EVENT)) {
                 event.setState(State.CANCELED);
@@ -204,11 +205,10 @@ public class EventServiceImpl implements EventService {
     public EventFullDto getEventByPublic(Long eventId, HttpServletRequest request) {
         Event event = eventRepository.findById(eventId).orElseThrow(() ->
                 new NotFoundException("Событие не найдено."));
-        if (!event.getState().equals(State.PUBLISHED)) {
-            throw new NotFoundException("Не найдено");
+        if (!event.getState().equals(PUBLISHED)) {
+            throw new ConflictException("Событие не опубликовано.");
         }
-        statsClient.saveHits(request);
-        return toEventsFullDto(List.of(event)).get(0);
+        return EventMapper.toEventFullDto(event);
     }
 
     @Override
@@ -225,8 +225,8 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
                                          LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
                                          Integer size, HttpServletRequest request) {
-        List<EventShortDto> events = new ArrayList<>();
-        return events;
+        List<EventShortDto> list = new ArrayList<>();
+        return list;
     }
 
     @Override
@@ -346,38 +346,13 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toMap(ConfirmedRequests::getEvent, ConfirmedRequests::getCount));
     }
 
-    public Map<Long, Long> getViews(List<Event> events) {
-        Map<Long, Long> views = new HashMap<>();
-        List<Event> publishedEvents = events.stream()
-                .filter(event -> event.getPublishedOn() != null)
-                .collect(Collectors.toList());
-        if (events.isEmpty()) {
-            return views;
-        }
-        Optional<LocalDateTime> minPublishedOn = publishedEvents.stream()
-                .map(Event::getPublishedOn)
-                .filter(Objects::nonNull)
-                .min(LocalDateTime::compareTo);
-        if (minPublishedOn.isPresent()) {
-            LocalDateTime start = minPublishedOn.get();
-            LocalDateTime end = LocalDateTime.now();
-            String[] uris = publishedEvents.stream()
-                    .map(Event::getId)
-                    .map(id -> ("/events/" + id))
-                    .toArray(String[]::new);
-            List<ResponseStatsDto> stats = getStats(start, end, uris, true);
-            putStats(views, stats);
-        }
-        return views;
-    }
-
     private List<ResponseStatsDto> getStats(LocalDateTime start, LocalDateTime end, String[] uris, Boolean unique) {
         StatsRequestDto statsRequestDto = StatsRequestDto.builder()
                 .start(start)
                 .end(end)
                 .uris(uris)
                 .build();
-        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto, appName);
+        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto, app);
         try {
             return Arrays.asList(mapper.readValue(mapper.writeValueAsString(response.getBody()), ResponseStatsDto[].class));
         } catch (JsonProcessingException e) {
@@ -391,17 +366,5 @@ public class EventServiceImpl implements EventService {
                     .split("/", 0)[2]);
             views.put(eventId, views.getOrDefault(eventId, 0L) + stat.getHits());
         });
-    }
-
-    private List<EventFullDto> toEventsFullDto(List<Event> events) {
-        Map<Long, Long> views = getViews(events);
-        List<Long> ids = events.stream().map(Event::getId).collect(Collectors.toList());
-        Map<Long, Long> confirmedRequests = getConfirmedRequests(ids);
-        return events.stream()
-                .map((event) -> EventMapper.toEventFullDtoWithViews(
-                        event,
-                        confirmedRequests.getOrDefault(event.getId(), 0L),
-                        views.getOrDefault(event.getId(), 0L)))
-                .collect(Collectors.toList());
     }
 }
