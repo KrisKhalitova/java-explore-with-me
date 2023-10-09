@@ -38,7 +38,7 @@ public class CompilationMapper {
 
     public List<CompilationDto> toCompilationDtoListWithEvents(List<Compilation> compilations, List<EventShortDto> eventsShortDto) {
         return compilations.stream()
-                .map(compilation-> CompilationDto.builder()
+                .map(compilation -> CompilationDto.builder()
                         .id(compilation.getId())
                         .pinned(compilation.getPinned())
                         .title(compilation.getTitle())
