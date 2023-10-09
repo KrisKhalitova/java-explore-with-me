@@ -33,6 +33,7 @@ import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
 import ru.practicum.ewm.requests.mapper.RequestMapper;
+import ru.practicum.ewm.requests.model.Request;
 import ru.practicum.ewm.requests.model.RequestStatus;
 import ru.practicum.ewm.requests.repository.RequestRepository;
 import ru.practicum.ewm.users.model.User;
@@ -227,7 +228,68 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventRequestStatusUpdateResult updateRequestsStatus(Long userId, Long eventId,
                                                                EventRequestStatusUpdateRequest request) {
-        return null;
+        userRepository.findById(userId).orElseThrow(() ->
+                new NotFoundException("Пользователь не найден."));
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new NotFoundException("Событие не найдено."));
+        Long confirmedRequests = requestRepository.countByEventIdAndStatus(eventId,
+                RequestStatus.CONFIRMED);
+
+        long freePlaces = event.getParticipantLimit() - confirmedRequests;
+
+        RequestStatus status = RequestStatus.valueOf(String.valueOf(request.getStatus()));
+        if (status.equals(RequestStatus.CONFIRMED) && freePlaces <= 0) {
+            throw new ValidationException("Лимит запросов к участию исчерпан.");
+        }
+        List<Request> requests = requestRepository.findAllByEventIdAndEventInitiatorIdAndIdIn(eventId,
+                userId, request.getRequestIds());
+        setStatus(requests, status, freePlaces);
+
+        List<RequestDto> requestsDto = requests
+                .stream()
+                .map(RequestMapper::toRequestDto)
+                .collect(Collectors.toList());
+
+        List<RequestDto> confirmedRequestsDto = new ArrayList<>();
+        List<RequestDto> rejectedRequestsDto = new ArrayList<>();
+
+        requestsDto.forEach(el -> {
+            if (status.equals(RequestStatus.CONFIRMED)) {
+                confirmedRequestsDto.add(el);
+            } else {
+                rejectedRequestsDto.add(el);
+            }
+        });
+
+        return EventRequestStatusUpdateResult.builder()
+                .confirmedRequests(confirmedRequestsDto)
+                .rejectedRequests(rejectedRequestsDto)
+                .build();
+    }
+
+    private void setStatus(Collection<Request> requests, RequestStatus status, long freePlaces) {
+        if (status.equals(RequestStatus.CONFIRMED)) {
+            for (Request request : requests) {
+                if (!request.getStatus().equals(RequestStatus.PENDING)) {
+                    throw new ValidationException("Статус запроса должен быть ожидание");
+                }
+                if (freePlaces > 0) {
+                    request.setStatus(RequestStatus.CONFIRMED);
+                    freePlaces--;
+                } else {
+                    request.setStatus(RequestStatus.REJECTED);
+                }
+            }
+        } else if (status.equals(RequestStatus.REJECTED)) {
+            requests.forEach(request -> {
+                if (!request.getStatus().equals(RequestStatus.PENDING)) {
+                    throw new ValidationException("Статус запроса должен быть ожидание");
+                }
+                request.setStatus(RequestStatus.REJECTED);
+            });
+        } else {
+            throw new ValidationException("Вы должны либо одобрить - ПОДТВЕРЖДЕНО или отклонить - ОТКЛОНЕНА заявка");
+        }
     }
 
     @Override
