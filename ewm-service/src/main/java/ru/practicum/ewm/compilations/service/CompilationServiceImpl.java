@@ -1,7 +1,7 @@
 package ru.practicum.ewm.compilations.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.compilations.dto.CompilationDto;
@@ -17,7 +17,6 @@ import ru.practicum.ewm.events.repository.EventRepository;
 import ru.practicum.ewm.events.service.EventService;
 import ru.practicum.ewm.exceptions.NotFoundException;
 import ru.practicum.ewm.requests.repository.RequestRepository;
-import ru.practicum.ewm.util.EwmPageRequest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -82,17 +81,15 @@ public class CompilationServiceImpl implements CompilationService {
     }
 
     @Override
-    public List<CompilationDto> getCompilations(Boolean pinned, Integer from, Integer size) {
-        if (pinned == null) {
-            List<CompilationDto> compilationDtosWithNullPinned = compilationRepository.findAll(new EwmPageRequest(from, size, Sort.unsorted())).getContent().stream()
-                    .map(CompilationMapper::toCompilationDto)
-                    .collect(Collectors.toList());
-            return compilationDtosWithNullPinned;
-        }
-        return compilationRepository.findAllByPinned(pinned, new EwmPageRequest(from, size, Sort.unsorted()))
-                .getContent().stream()
-                .map(CompilationMapper::toCompilationDto)
-                .collect(Collectors.toList());
+    public List<CompilationDto> getCompilations(Boolean pinned, Pageable pageable) {
+        List<Compilation> result = pinned != null
+                ? compilationRepository.findByPinned(pinned, pageable)
+                : compilationRepository.findAll(pageable).getContent();
+        Set<Event> events = result.stream()
+                .flatMap(compilation -> compilation.getEvents().stream())
+                .collect(Collectors.toSet());
+        List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
+        return CompilationMapper.toCompilationDtoListWithEvents(result, eventsShortDto);
     }
 
     @Override

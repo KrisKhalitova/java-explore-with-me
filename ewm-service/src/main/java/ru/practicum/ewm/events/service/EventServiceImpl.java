@@ -306,7 +306,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
+    public List<EventFullDto> getEventsByAdminParams(Set<Long> users, List<State> states, Set<Long> categories,
                                                      LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable) {
         return null;
     }

@@ -41,7 +41,7 @@ public class CategoryServiceImpl implements CategoryService {
             throw new ConflictException("Имя пользователя уже существует");
         }
         if (categoryDto.getName() != null && !categoryDto.getName().isBlank()) {
-            category.setName(category.getName());
+            category.setName(categoryDto.getName());
         }
         return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }

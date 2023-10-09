@@ -17,10 +17,4 @@ public class CompilationDto {
     private List<EventShortDto> events;
     private Boolean pinned;
     private String title;
-
-    public CompilationDto(Long id, boolean pinned, String title) {
-        this.id = id;
-        this.pinned = pinned;
-        this.title = title;
-    }
 }

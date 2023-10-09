@@ -3,6 +3,7 @@ package ru.practicum.ewm.events.service;
 import org.springframework.data.domain.Pageable;
 import ru.practicum.ewm.events.dto.*;
 import ru.practicum.ewm.events.model.EventSortType;
+import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
@@ -10,6 +11,7 @@ import ru.practicum.ewm.requests.dto.RequestDto;
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 public interface EventService {
     EventFullDto addNewEvent(Long userId, NewEventDto newEventDto);
@@ -30,5 +32,5 @@ public interface EventService {
 
     List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId);
 
-    List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable);
+    List<EventFullDto> getEventsByAdminParams(Set<Long> users, List<State> states, Set<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Pageable pageable);
 }
