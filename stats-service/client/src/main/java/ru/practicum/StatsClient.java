@@ -39,7 +39,7 @@ public class StatsClient {
                 .block();
     }
 
-    public ResponseEntity<List<ResponseStatsDto>> getStats(StatsRequestDto statsRequestDto, String appName) {
+    public ResponseEntity<List<ResponseStatsDto>> getStats(StatsRequestDto statsRequestDto) {
         log.info("Получена статистика по посещениям.");
         return client.get()
                 .uri(uriBuilder -> uriBuilder
@@ -48,7 +48,6 @@ public class StatsClient {
                         .queryParam("end", statsRequestDto.getEnd())
                         .queryParam("uris", statsRequestDto.getUris())
                         .queryParam("unique", statsRequestDto.getIsUnique())
-                        .queryParam(appName)
                         .build())
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()

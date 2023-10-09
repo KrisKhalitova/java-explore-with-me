@@ -1,6 +1,7 @@
 package ru.practicum.ewm.events.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,7 +70,7 @@ public class EventServiceImpl implements EventService {
     final StatsClient statsClient;
     final ObjectMapper mapper = new ObjectMapper();
     @Value("${app}")
-    private String app;
+    private String appName;
 
     @Override
     public EventFullDto addNewEvent(Long userId, NewEventDto newEventDto) {
@@ -287,8 +289,62 @@ public class EventServiceImpl implements EventService {
     public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
                                                      LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
                                                      Integer size) {
-        List<EventFullDto> list = new ArrayList<>();
-        return list;
+        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+            throw new ValidationException("Некорректный запрос.");
+        }
+        Specification<Event> specification = Specification.where(null);
+        if (users != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    root.get("initiator").get("id").in(users));
+        }
+        if (states != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    root.get("state").as(String.class).in(states));
+        }
+        if (categories != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    root.get("category").get("id").in(categories));
+        }
+        if (rangeStart != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
+        }
+        if (rangeEnd != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
+        }
+        List<Event> events = eventRepository.findAll(specification, PageRequest.of(from / size, size)).getContent();
+        List<EventFullDto> result = new ArrayList<>();
+        String[] uris = events.stream()
+                .map(event -> String.format("/events/%s", event.getId()))
+                .toArray(String[]::new);
+        LocalDateTime start = events.stream()
+                .map(Event::getCreatedOn)
+                .min(LocalDateTime::compareTo)
+                .orElseThrow(() -> new NotFoundException("Время начала не найдено."));
+        StatsRequestDto statsRequestDto = StatsRequestDto.builder()
+                .start(start)
+                .end(LocalDateTime.now())
+                .uris(uris)
+                .isUnique(true)
+                .build();
+        List<Long> ids = events.stream().map(Event::getId).collect(Collectors.toList());
+        Map<Long, Long> confirmedRequests = requestRepository.findAllByEventIdInAndStatus(ids, CONFIRMED).stream()
+                .collect(Collectors.toMap(ConfirmedRequests::getEvent, ConfirmedRequests::getCount));
+        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto);
+        for (Event event : events) {
+            ObjectMapper mapper = new ObjectMapper();
+            List<ResponseStatsDto> statsDto = mapper.convertValue(response.getBody(), new TypeReference<>() {
+            });
+            if (!statsDto.isEmpty()) {
+                result.add(EventMapper.toEventFullDtoWithViews(event, statsDto.get(0).getHits(),
+                        confirmedRequests.getOrDefault(event.getId(), 0L)));
+            } else {
+                result.add(EventMapper.toEventFullDtoWithViews(event, 0L,
+                        confirmedRequests.getOrDefault(event.getId(), 0L)));
+            }
+        }
+        return result;
     }
 
     private void setStatus(Collection<Request> requests, RequestStatus status, long freePlaces) {
@@ -353,7 +409,7 @@ public class EventServiceImpl implements EventService {
                 .uris(uris)
                 .isUnique(unique)
                 .build();
-        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto, app);
+        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto);
         try {
             return Arrays.asList(mapper.readValue(mapper.writeValueAsString(response.getBody()), ResponseStatsDto[].class));
         } catch (JsonProcessingException e) {

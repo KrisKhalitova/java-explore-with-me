@@ -35,15 +35,17 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryDto updateCategory(Long catId, CategoryDto categoryDto) {
-        Category category = categoryRepository.findById(catId).orElseThrow(() ->
-                new NotFoundException("Категория не найдена."));
-        if (categoryRepository.existsByName(categoryDto.getName())) {
-            throw new ConflictException("Имя пользователя уже существует");
+        if (categoryDto.getName() == null || categoryDto.getName().isEmpty()) {
+            throw new RuntimeException("Название категории не может быть пустым");
         }
-        if (categoryDto.getName() != null && !categoryDto.getName().isBlank()) {
-            category.setName(categoryDto.getName());
+        Category savedCategory = categoryRepository.findById(catId).orElseThrow(() ->
+                new NotFoundException("Категория не найдена"));
+        if (!savedCategory.getName().equals(categoryDto.getName()) && categoryRepository.existsByName(categoryDto.getName())) {
+            throw new ConflictException("Категория с таким именем уже существует.");
+        } else {
+            savedCategory.setName(categoryDto.getName());
+            return CategoryMapper.toCategoryDto(categoryRepository.save(savedCategory));
         }
-        return CategoryMapper.toCategoryDto(categoryRepository.save(category));
     }
 
     @Override
