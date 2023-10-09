@@ -1,6 +1,7 @@
 package ru.practicum.ewm.events.service;
 
 import ru.practicum.ewm.events.dto.*;
+import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
@@ -27,7 +28,7 @@ public interface EventService {
 
     List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId);
 
-    List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
+    List<EventFullDto> getEventsByAdminParams(List<Long> users, List<State> states, List<Long> categories,
                                               LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
                                               Integer size);
 

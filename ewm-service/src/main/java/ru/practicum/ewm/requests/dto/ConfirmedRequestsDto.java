@@ -5,7 +5,7 @@ import lombok.Data;
 
 @AllArgsConstructor
 @Data
-public class ConfirmedRequests {
+public class ConfirmedRequestsDto {
     private Long count;
     private Long event;
 }

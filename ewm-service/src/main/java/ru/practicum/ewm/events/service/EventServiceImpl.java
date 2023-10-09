@@ -1,7 +1,6 @@
 package ru.practicum.ewm.events.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +8,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +32,7 @@ import ru.practicum.ewm.exceptions.ValidationException;
 import ru.practicum.ewm.locations.mapper.LocationMapper;
 import ru.practicum.ewm.locations.model.Location;
 import ru.practicum.ewm.locations.repository.LocationRepository;
-import ru.practicum.ewm.requests.dto.ConfirmedRequests;
+import ru.practicum.ewm.requests.dto.ConfirmedRequestsDto;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
@@ -43,6 +42,7 @@ import ru.practicum.ewm.requests.model.RequestStatus;
 import ru.practicum.ewm.requests.repository.RequestRepository;
 import ru.practicum.ewm.users.model.User;
 import ru.practicum.ewm.users.repository.UserRepository;
+import ru.practicum.ewm.util.EwmPageRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -286,66 +286,93 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
-                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
-                                                     Integer size) {
-        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-            throw new ValidationException("Некорректный запрос.");
-        }
-        Specification<Event> specification = Specification.where(null);
-        if (users != null) {
-            specification = specification.and((root, query, criteriaBuilder) ->
-                    root.get("initiator").get("id").in(users));
-        }
-        if (states != null) {
-            specification = specification.and((root, query, criteriaBuilder) ->
-                    root.get("state").as(String.class).in(states));
-        }
-        if (categories != null) {
-            specification = specification.and((root, query, criteriaBuilder) ->
-                    root.get("category").get("id").in(categories));
-        }
-        if (rangeStart != null) {
-            specification = specification.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
-        }
-        if (rangeEnd != null) {
-            specification = specification.and((root, query, criteriaBuilder) ->
-                    criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
-        }
-        List<Event> events = eventRepository.findAll(specification, PageRequest.of(from / size, size)).getContent();
-        List<EventFullDto> result = new ArrayList<>();
-        String[] uris = events.stream()
-                .map(event -> String.format("/events/%s", event.getId()))
-                .toArray(String[]::new);
-        LocalDateTime start = events.stream()
-                .map(Event::getCreatedOn)
-                .min(LocalDateTime::compareTo)
-                .orElseThrow(() -> new NotFoundException("Время начала не найдено."));
-        StatsRequestDto statsRequestDto = StatsRequestDto.builder()
-                .start(start)
-                .end(LocalDateTime.now())
-                .uris(uris)
-                .isUnique(true)
-                .build();
-        List<Long> ids = events.stream().map(Event::getId).collect(Collectors.toList());
-        Map<Long, Long> confirmedRequests = requestRepository.findAllByEventIdInAndStatus(ids, CONFIRMED).stream()
-                .collect(Collectors.toMap(ConfirmedRequests::getEvent, ConfirmedRequests::getCount));
-        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto);
-        for (Event event : events) {
-            ObjectMapper mapper = new ObjectMapper();
-            List<ResponseStatsDto> statsDto = mapper.convertValue(response.getBody(), new TypeReference<>() {
-            });
-            if (!statsDto.isEmpty()) {
-                result.add(EventMapper.toEventFullDtoWithViews(event, statsDto.get(0).getHits(),
-                        confirmedRequests.getOrDefault(event.getId(), 0L)));
-            } else {
-                result.add(EventMapper.toEventFullDtoWithViews(event, 0L,
-                        confirmedRequests.getOrDefault(event.getId(), 0L)));
+    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<State> states, List<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from, Integer size) {
+        validDateParam(rangeStart, rangeEnd);
+        PageRequest pageable = new EwmPageRequest(from, size, Sort.unsorted());
+        List<Event> events = eventRepository.findAllForAdmin(users, states, categories, getRangeStart(rangeStart),
+                pageable);
+        Map<Long, Long> confReqs = getConfirmedRequests(events.stream().map(Event::getId).collect(Collectors.toList()));
+        return events.stream()
+                .map(event -> EventMapper.toEventFullDto(event, confReqs.getOrDefault(event.getId(), 0L)))
+                .collect(Collectors.toList());
+    }
+
+    private void validDateParam(LocalDateTime rangeStart, LocalDateTime rangeEnd) {
+        if (rangeStart != null && rangeEnd != null) {
+            if (rangeEnd.isBefore(rangeStart)) {
+                throw new ValidationException("Дата начала не может быть указана после даты окончания");
             }
         }
-        return result;
     }
+
+    private LocalDateTime getRangeStart(LocalDateTime rangeStart) {
+        if (rangeStart == null) {
+            return LocalDateTime.now();
+        }
+        return rangeStart;
+    }
+
+//    @Override
+//    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
+//                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
+//                                                     Integer size) {
+//        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+//            throw new ValidationException("Некорректный запрос.");
+//        }
+//        Specification<Event> specification = Specification.where(null);
+//        if (users != null) {
+//            specification = specification.and((root, query, criteriaBuilder) ->
+//                    root.get("initiator").get("id").in(users));
+//        }
+//        if (states != null) {
+//            specification = specification.and((root, query, criteriaBuilder) ->
+//                    root.get("state").as(String.class).in(states));
+//        }
+//        if (categories != null) {
+//            specification = specification.and((root, query, criteriaBuilder) ->
+//                    root.get("category").get("id").in(categories));
+//        }
+//        if (rangeStart != null) {
+//            specification = specification.and((root, query, criteriaBuilder) ->
+//                    criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
+//        }
+//        if (rangeEnd != null) {
+//            specification = specification.and((root, query, criteriaBuilder) ->
+//                    criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
+//        }
+//        List<Event> events = eventRepository.findAll(specification, PageRequest.of(from / size, size)).getContent();
+//        List<EventFullDto> result = new ArrayList<>();
+//        String[] uris = events.stream()
+//                .map(event -> String.format("/events/%s", event.getId()))
+//                .toArray(String[]::new);
+//        LocalDateTime start = events.stream()
+//                .map(Event::getCreatedOn)
+//                .min(LocalDateTime::compareTo)
+//                .orElseThrow(() -> new NotFoundException("Время начала не найдено."));
+//        StatsRequestDto statsRequestDto = StatsRequestDto.builder()
+//                .start(start)
+//                .end(LocalDateTime.now())
+//                .uris(uris)
+//                .isUnique(true)
+//                .build();
+//        List<Long> ids = events.stream().map(Event::getId).collect(Collectors.toList());
+//        Map<Long, Long> confirmedRequests = requestRepository.findAllByEventIdInAndStatus(ids, CONFIRMED).stream()
+//                .collect(Collectors.toMap(ConfirmedRequests::getEvent, ConfirmedRequests::getCount));
+//        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto);
+//        for (Event event : events) {
+//            ObjectMapper mapper = new ObjectMapper();
+//            List<ResponseStatsDto> statsDto = mapper.convertValue(response.getBody(), new TypeReference<>() {
+//            });
+//            if (!statsDto.isEmpty()) {
+//                result.add(EventMapper.toEventFullDtoWithViews(event, statsDto.get(0).getHits(),
+//                        confirmedRequests.getOrDefault(event.getId(), 0L)));
+//            } else {
+//                result.add(EventMapper.toEventFullDtoWithViews(event, 0L,
+//                        confirmedRequests.getOrDefault(event.getId(), 0L)));
+//            }
+//        }
+//        return result;
+//    }
 
     private void setStatus(Collection<Request> requests, RequestStatus status, long freePlaces) {
         if (status.equals(RequestStatus.CONFIRMED)) {
@@ -399,7 +426,7 @@ public class EventServiceImpl implements EventService {
     private Map<Long, Long> getConfirmedRequests(List<Long> ids) {
         return requestRepository.findAllByEventIdInAndStatus(ids, RequestStatus.CONFIRMED)
                 .stream()
-                .collect(Collectors.toMap(ConfirmedRequests::getEvent, ConfirmedRequests::getCount));
+                .collect(Collectors.toMap(ConfirmedRequestsDto::getEvent, ConfirmedRequestsDto::getCount));
     }
 
     private List<ResponseStatsDto> getStats(LocalDateTime start, LocalDateTime end, String[] uris, Boolean unique) {
