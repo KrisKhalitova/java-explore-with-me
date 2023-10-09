@@ -14,9 +14,8 @@ import ru.practicum.ewm.events.dto.EventShortDto;
 import ru.practicum.ewm.events.mapper.EventMapper;
 import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.events.repository.EventRepository;
-import ru.practicum.ewm.events.service.EventService;
 import ru.practicum.ewm.exceptions.NotFoundException;
-import ru.practicum.ewm.requests.repository.RequestRepository;
+import ru.practicum.ewm.exceptions.ValidationException;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -30,9 +29,7 @@ import java.util.stream.Collectors;
 public class CompilationServiceImpl implements CompilationService {
 
     private final CompilationRepository compilationRepository;
-    private final RequestRepository requestRepository;
     private final EventRepository eventRepository;
-    private final EventService eventService;
 
     @Override
     public CompilationDto addNewCompilation(NewCompilationDto newCompilationDto) {
@@ -41,6 +38,9 @@ public class CompilationServiceImpl implements CompilationService {
             compilation.setPinned(newCompilationDto.getPinned());
         } else {
             compilation.setPinned(false);
+        }
+        if (newCompilationDto.getTitle().length() > 50) {
+            throw new ValidationException("Длина title не может быть больше 50.");
         }
         List<Long> eventsId = newCompilationDto.getEvents();
         Set<Event> events = new HashSet<>(eventRepository.findAllByIdIn(eventsId));
