@@ -64,7 +64,6 @@ public class CompilationServiceImpl implements CompilationService {
         }
     }
 
-
     @Override
     public CompilationDto updateCompilationById(Long compId, UpdateCompilationRequest updatedCompilation) {
         Compilation toUpdate = compilationRepository.findById(compId).orElseThrow(() ->
@@ -107,15 +106,6 @@ public class CompilationServiceImpl implements CompilationService {
                 }).collect(Collectors.toList());
     }
 
-    private Map<Long, EventShortDto> getEventsShortDto(List<Compilation> compilations) {
-        Set<Event> uniqueEvents = new HashSet<>();
-        compilations.forEach(compilation -> uniqueEvents.addAll(compilation.getEvents()));
-        Map<Long, EventShortDto> eventsShortDto = new HashMap<>();
-        eventService.toEventsShortDto(new ArrayList<>(uniqueEvents)).forEach(event -> eventsShortDto.put(event.getId(), event));
-        return eventsShortDto;
-    }
-
-
     @Override
     public CompilationDto getCompilationById(Long compId) {
         Compilation compilation = compilationRepository.findById(compId).orElseThrow(() ->
@@ -125,5 +115,13 @@ public class CompilationServiceImpl implements CompilationService {
         compilation.setEvents(events);
         List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
         return CompilationMapper.toCompilationDtoWithEvents(compilation, eventsShortDto);
+    }
+
+    private Map<Long, EventShortDto> getEventsShortDto(List<Compilation> compilations) {
+        Set<Event> uniqueEvents = new HashSet<>();
+        compilations.forEach(compilation -> uniqueEvents.addAll(compilation.getEvents()));
+        Map<Long, EventShortDto> eventsShortDto = new HashMap<>();
+        eventService.toEventsShortDto(new ArrayList<>(uniqueEvents)).forEach(event -> eventsShortDto.put(event.getId(), event));
+        return eventsShortDto;
     }
 }

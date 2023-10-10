@@ -24,6 +24,9 @@ import java.util.Map;
 @Slf4j
 public class StatsClient2 extends BaseClient {
 
+    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+    public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
+
     @Autowired
     public StatsClient2(@Value("${stats-server.url}") String serverUrl, RestTemplateBuilder builder) {
         super(
@@ -41,12 +44,10 @@ public class StatsClient2 extends BaseClient {
         return post("/hit", endpointHit);
     }
 
-
     public ResponseEntity<Object> getStats(StatsRequestDto statsRequestDto) {
         return getStats(statsRequestDto.getStart(), statsRequestDto.getEnd(), statsRequestDto.getUris(),
                 statsRequestDto.getIsUnique());
     }
-
 
     public ResponseEntity<Object> getStats(LocalDateTime start, LocalDateTime end, String[] uris, boolean unique) {
         List<String> urList = new ArrayList<>();
@@ -64,9 +65,6 @@ public class StatsClient2 extends BaseClient {
         }
     }
 
-    public static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
-    public static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern(DATE_FORMAT);
-
     private Map<String, Object> getStatsParameters(LocalDateTime start, LocalDateTime end, String[] uris, boolean unique) {
         if (uris == null) {
             return Map.of(
@@ -83,5 +81,4 @@ public class StatsClient2 extends BaseClient {
             );
         }
     }
-
 }

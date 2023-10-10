@@ -23,7 +23,7 @@ public class StatsClient {
 
     private final WebClient client;
 
-    public StatsClient(@Value("${stats-server.url}")String baseUrl) {
+    public StatsClient(@Value("${stats-server.url}") String baseUrl) {
         this.client = WebClient.create(baseUrl);
     }
 
@@ -36,7 +36,6 @@ public class StatsClient {
                 .uri("/hit")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(Mono.just(endpointHit), StatHitDto.class)
-                //.body(endpointHit, StatHitDto.class)
                 .retrieve()
                 .toBodilessEntity()
                 .block();
@@ -57,8 +56,4 @@ public class StatsClient {
                 .toEntityList(ResponseStatsDto.class)
                 .block();
     }
-
-
-
-
 }
