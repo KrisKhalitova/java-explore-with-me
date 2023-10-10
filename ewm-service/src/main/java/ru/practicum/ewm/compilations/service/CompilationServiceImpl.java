@@ -16,10 +16,7 @@ import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.events.repository.EventRepository;
 import ru.practicum.ewm.exceptions.NotFoundException;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -32,34 +29,21 @@ public class CompilationServiceImpl implements CompilationService {
 
     @Override
     public CompilationDto addNewCompilation(NewCompilationDto newCompilationDto) {
-        Compilation compilation = CompilationMapper.toCompilation(newCompilationDto);
-        if (newCompilationDto.getPinned() != null) {
-            compilation.setPinned(newCompilationDto.getPinned());
-        } else {
-            compilation.setPinned(false);
-        }
-        List<Long> eventsId = newCompilationDto.getEvents();
-        Set<Event> events = new HashSet<>(eventRepository.findAllByIdIn(eventsId));
-        if (eventsId != null) {
-            compilation.setEvents(events);
-        }
-        List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
-        Compilation savedCompilation = compilationRepository.save(compilation);
-        return CompilationMapper.toCompilationDtoWithEvents(savedCompilation, eventsShortDto);
+        Set<Event> events = getEventsFromNewCompilationDto(newCompilationDto);
+        Compilation compilation = compilationRepository.save(CompilationMapper.newDtoToCompilation(newCompilationDto, events));
+        return getCompilationById(compilation.getId());
     }
 
     @Override
     public CompilationDto updateCompilationById(Long compId, UpdateCompilationRequest updatedCompilation) {
         Compilation toUpdate = compilationRepository.findById(compId).orElseThrow(() ->
                 new NotFoundException("Подборка событий не найдена"));
-
         if (updatedCompilation.getTitle() != null && !updatedCompilation.getTitle().isBlank()) {
             toUpdate.setTitle(updatedCompilation.getTitle());
         }
         if (updatedCompilation.getPinned() != null) {
             toUpdate.setPinned(updatedCompilation.getPinned());
         }
-
         List<Long> eventsId = updatedCompilation.getEvents();
         if (updatedCompilation.getEvents() != null && !updatedCompilation.getEvents().isEmpty()) {
             Set<Event> events = eventRepository.findAllByIdIn(eventsId);
@@ -97,5 +81,21 @@ public class CompilationServiceImpl implements CompilationService {
         compilation.setEvents(events);
         List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
         return CompilationMapper.toCompilationDtoWithEvents(compilation, eventsShortDto);
+    }
+
+    private Set<Event> getEventsFromNewCompilationDto(NewCompilationDto newCompilationDto) {
+        if (!newCompilationDto.getEvents().isEmpty()) {
+            List<Long> eventsId = newCompilationDto.getEvents();
+            Set<Event> events = eventRepository.findAllByIdIn(eventsId);
+            checkSize(events, newCompilationDto.getEvents());
+            return events;
+        }
+        return Collections.emptySet();
+    }
+
+    private void checkSize(Set<Event> events, List<Long> eventsIdToUpdate) {
+        if (events.size() != eventsIdToUpdate.size()) {
+            throw new NotFoundException("Не найдено.");
+        }
     }
 }

@@ -66,67 +66,6 @@ public class EventMapper {
                 .build();
     }
 
-    public EventFullDto toEventFullDtoWithAll(Event event, Long confirmedRequests, Long views) {
-        return EventFullDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(CategoryMapper.toCategoryDto(event.getCategory()))
-                .confirmedRequests(confirmedRequests)
-                .views(views)
-                .createdOn(event.getCreatedOn())
-                .description(event.getDescription())
-                .eventDate(event.getEventDate())
-                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                .location(LocationMapper.toLocationDto(event.getLocation()))
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .build();
-    }
-
-    public EventFullDto toEventFullDtoWithoutConfirmedRequests(Event event) {
-        return EventFullDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(CategoryMapper.toCategoryDto(event.getCategory()))
-                .createdOn(event.getCreatedOn())
-                .description(event.getDescription())
-                .eventDate(event.getEventDate())
-                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                .location(LocationMapper.toLocationDto(event.getLocation()))
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .build();
-    }
-
-    public EventFullDto toEventFullDtoWithViews(Event event, Long confirmedRequests, Long views) {
-        return EventFullDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(CategoryMapper.toCategoryDto(event.getCategory()))
-                .confirmedRequests(confirmedRequests)
-                .createdOn(event.getCreatedOn())
-                .description(event.getDescription())
-                .eventDate(event.getEventDate())
-                .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                .location(LocationMapper.toLocationDto(event.getLocation()))
-                .paid(event.getPaid())
-                .participantLimit(event.getParticipantLimit())
-                .publishedOn(event.getPublishedOn())
-                .requestModeration(event.getRequestModeration())
-                .state(event.getState())
-                .title(event.getTitle())
-                .views(views)
-                .build();
-    }
-
     public EventShortDto toEventShortDto(Event event, Long confirmedRequests) {
         return EventShortDto.builder()
                 .id(event.getId())
@@ -140,7 +79,7 @@ public class EventMapper {
                 .build();
     }
 
-    public EventShortDto toEventShortDtoWithConfirmedRequestsAndViews(Event event, Long confirmedRequests, Long views) {
+    public EventShortDto toEventShortDtoWithAll(Event event, Long views, Long confirmedRequests) {
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())

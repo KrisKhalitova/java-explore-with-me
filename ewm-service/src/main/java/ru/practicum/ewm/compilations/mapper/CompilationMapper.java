@@ -5,18 +5,21 @@ import ru.practicum.ewm.compilations.dto.CompilationDto;
 import ru.practicum.ewm.compilations.dto.NewCompilationDto;
 import ru.practicum.ewm.compilations.model.Compilation;
 import ru.practicum.ewm.events.dto.EventShortDto;
+import ru.practicum.ewm.events.model.Event;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @UtilityClass
 public class CompilationMapper {
 
-    public Compilation toCompilation(NewCompilationDto newCompilationDto) {
-        return new Compilation(
-                newCompilationDto.getTitle(),
-                newCompilationDto.getPinned()
-        );
+    public Compilation newDtoToCompilation(NewCompilationDto newCompilationDto, Set<Event> events) {
+        return Compilation.builder()
+                .events(events)
+                .title(newCompilationDto.getTitle())
+                .pinned(newCompilationDto.getPinned())
+                .build();
     }
 
     public CompilationDto toCompilationDtoWithEvents(Compilation compilation, List<EventShortDto> eventsShortDto) {

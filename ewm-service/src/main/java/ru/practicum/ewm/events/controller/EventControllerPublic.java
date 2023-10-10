@@ -26,17 +26,17 @@ public class EventControllerPublic {
                                          @RequestParam(required = false) List<Long> categories,
                                          @RequestParam(required = false) Boolean paid,
                                          @RequestParam(required = false)
-                                         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-                                         LocalDateTime rangeStart,
+                                             @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                                             LocalDateTime rangeStart,
                                          @RequestParam(required = false)
-                                         @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-                                         LocalDateTime rangeEnd,
+                                             @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+                                             LocalDateTime rangeEnd,
                                          @RequestParam(defaultValue = "false") Boolean onlyAvailable,
                                          @RequestParam(defaultValue = "EVENT_DATE") String sort,
                                          @RequestParam(value = "from", defaultValue = "0") @PositiveOrZero
-                                         Integer from,
+                                             Integer from,
                                          @RequestParam(value = "size", defaultValue = "10") @Positive
-                                         Integer size,
+                                             Integer size,
                                          HttpServletRequest request) {
         return eventService.getEvents(text, categories, paid, rangeStart, rangeEnd, onlyAvailable,
                 sort, from, size, request);

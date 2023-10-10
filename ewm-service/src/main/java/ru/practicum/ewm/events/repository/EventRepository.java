@@ -35,6 +35,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
             "AND (e.initiator.id IN :users OR :users IS NULL) " +
             "AND (e.state IN :states OR :states IS NULL)"
     )
-    List<Event> findAllForAdmin(List<Long> users, List<State> states, List<Long> categories, LocalDateTime rangeStart, PageRequest pageable);
+    List<Event> findAllForAdmin(List<Long> users, List<State> states, List<Long> categories,
+                                LocalDateTime rangeStart, PageRequest pageable);
 }
 
