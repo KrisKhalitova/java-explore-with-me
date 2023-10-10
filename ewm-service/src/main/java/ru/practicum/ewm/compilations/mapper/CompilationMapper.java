@@ -14,12 +14,11 @@ import java.util.stream.Collectors;
 @UtilityClass
 public class CompilationMapper {
 
-    public Compilation newDtoToCompilation(NewCompilationDto newCompilationDto, Set<Event> events) {
-        return Compilation.builder()
-                .events(events)
-                .title(newCompilationDto.getTitle())
-                .pinned(newCompilationDto.getPinned())
-                .build();
+    public Compilation toCompilation(NewCompilationDto newCompilationDto) {
+        return new Compilation(
+                newCompilationDto.getTitle(),
+                newCompilationDto.getPinned()
+        );
     }
 
     public CompilationDto toCompilationDtoWithEvents(Compilation compilation, List<EventShortDto> eventsShortDto) {
@@ -37,16 +36,5 @@ public class CompilationMapper {
                 .title(compilation.getTitle())
                 .pinned(compilation.getPinned())
                 .build();
-    }
-
-    public List<CompilationDto> toCompilationDtoListWithEvents(List<Compilation> compilations, List<EventShortDto> eventsShortDto) {
-        return compilations.stream()
-                .map(compilation -> CompilationDto.builder()
-                        .id(compilation.getId())
-                        .pinned(compilation.getPinned())
-                        .title(compilation.getTitle())
-                        .events(eventsShortDto)
-                        .build())
-                .collect(Collectors.toList());
     }
 }

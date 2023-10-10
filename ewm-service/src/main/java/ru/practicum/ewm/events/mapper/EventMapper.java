@@ -47,11 +47,13 @@ public class EventMapper {
                 .build();
     }
 
-    public EventFullDto toEventFullDto(Event event) {
+    public EventFullDto toEventFullDtoWithAll(Event event, Long confirmedRequests, Long views) {
         return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(CategoryMapper.toCategoryDto(event.getCategory()))
+                .confirmedRequests(confirmedRequests)
+                .views(views)
                 .createdOn(event.getCreatedOn())
                 .description(event.getDescription())
                 .eventDate(event.getEventDate())
@@ -79,7 +81,7 @@ public class EventMapper {
                 .build();
     }
 
-    public EventShortDto toEventShortDtoWithAll(Event event, Long views, Long confirmedRequests) {
+    public EventShortDto toEventShortDtoWithConfirmedRequestsAndViews(Event event, Long confirmedRequests, Long views) {
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
@@ -103,23 +105,6 @@ public class EventMapper {
                         .initiator(UserMapper.toUserShortDto(event.getInitiator()))
                         .paid(event.getPaid())
                         .title(event.getTitle())
-                        .build())
-                .collect(Collectors.toList());
-    }
-
-    public List<EventShortDto> toEventShortDtoListWithConfirmedReqAndViews(List<Event> events, Long confirmedRequests,
-                                                                           Long views) {
-        return events.stream()
-                .map(event -> EventShortDto.builder()
-                        .id(event.getId())
-                        .annotation(event.getAnnotation())
-                        .category(CategoryMapper.toCategoryDto(event.getCategory()))
-                        .eventDate(event.getEventDate())
-                        .initiator(UserMapper.toUserShortDto(event.getInitiator()))
-                        .paid(event.getPaid())
-                        .title(event.getTitle())
-                        .confirmedRequests(confirmedRequests)
-                        .views(views)
                         .build())
                 .collect(Collectors.toList());
     }
