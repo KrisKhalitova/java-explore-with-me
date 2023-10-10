@@ -21,7 +21,7 @@ public class CompilationControllerAdmin {
 
     @PostMapping
     @ResponseStatus(value = HttpStatus.CREATED)
-    public CompilationDto addNewCompilation(@RequestBody @Valid NewCompilationDto newCompilationDto) {
+    public CompilationDto addNewCompilation(@Valid @RequestBody NewCompilationDto newCompilationDto) {
         log.info("Получен запрос на добавление новой подборки.");
         return compilationService.addNewCompilation(newCompilationDto);
     }

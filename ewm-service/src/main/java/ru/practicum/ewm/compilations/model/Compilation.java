@@ -1,9 +1,6 @@
 package ru.practicum.ewm.compilations.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.ToString;
+import lombok.*;
 import ru.practicum.ewm.events.model.Event;
 
 import javax.persistence.*;
@@ -13,6 +10,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 @Table(name = "compilations")
 public class Compilation {
 
@@ -21,6 +19,7 @@ public class Compilation {
     private Long id;
 
     @Column(nullable = false)
+
     private String title;
 
     private Boolean pinned;
