@@ -9,6 +9,7 @@ services:
     depends_on:
       - stats-db
     environment:
+      - stats-server.url=http://stats-server:9090
       - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/stats-db
       - SPRING_DATASOURCE_USERNAME=user
       - SPRING_DATASOURCE_PASSWORD=userpassword
@@ -33,6 +34,7 @@ services:
       - ewm-db
       - stats-server
     environment:
+      - stats-server.url=http://stats-server:9090
       - SPRING_DATASOURCE_URL=jdbc:postgresql://ewm-db:5432/ewm-db
       - STATS_SERVER_URL=http://stats-server:9090
 

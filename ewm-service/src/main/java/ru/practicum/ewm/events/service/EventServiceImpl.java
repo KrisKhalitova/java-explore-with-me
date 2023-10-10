@@ -9,16 +9,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.StatsClient;
 import ru.practicum.dto.ResponseStatsDto;
 import ru.practicum.dto.StatsRequestDto;
 import ru.practicum.ewm.categories.mapper.CategoryMapper;
 import ru.practicum.ewm.categories.model.Category;
 import ru.practicum.ewm.categories.repository.CategoryRepository;
 import ru.practicum.ewm.categories.service.CategoryService;
+import ru.practicum.ewm.client.StatsClient2;
 import ru.practicum.ewm.events.dto.*;
 import ru.practicum.ewm.events.mapper.EventMapper;
 import ru.practicum.ewm.events.model.Event;
@@ -29,6 +30,7 @@ import ru.practicum.ewm.events.repository.EventRepository;
 import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
 import ru.practicum.ewm.exceptions.ValidationException;
+import ru.practicum.ewm.exceptions.ResponseException;
 import ru.practicum.ewm.locations.mapper.LocationMapper;
 import ru.practicum.ewm.locations.model.Location;
 import ru.practicum.ewm.locations.repository.LocationRepository;
@@ -67,7 +69,7 @@ public class EventServiceImpl implements EventService {
     final CategoryService categoryService;
     final LocationRepository locationRepository;
     final RequestRepository requestRepository;
-    final StatsClient statsClient;
+    final StatsClient2 statsClient;
     final ObjectMapper mapper = new ObjectMapper();
     @Value("${app}")
     private String appName;
@@ -210,7 +212,8 @@ public class EventServiceImpl implements EventService {
         if (!event.getState().equals(PUBLISHED)) {
             throw new NotFoundException("Событие не опубликовано.");
         }
-        return EventMapper.toEventFullDto(event);
+        statsClient.saveHits(request);
+        return toEventFullDto(event);
     }
 
     @Override
@@ -227,8 +230,23 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
                                          LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
                                          Integer size, HttpServletRequest request) {
-        List<EventShortDto> list = new ArrayList<>();
-        return list;
+        checkStartIsBeforeEnd(rangeStart, rangeEnd);
+        PageRequest pageable = PageRequest.of(from / size, size);
+        List<Event> events = eventRepository.findAllByPublic(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable);
+        statsClient.saveHits(request);
+        return toEventsShortDto(events);
+    }
+
+    @Override
+    public List<EventShortDto> toEventsShortDto(List<Event> events) {
+        Map<Long, Long> views = getViews(events);
+        Map<Long, Long> confirmedRequests = getConfirmedRequests2(events);
+        return events.stream()
+                .map((event) -> EventMapper.toEventShortDtoWithConfirmedRequestsAndViews(
+                        event,
+                        confirmedRequests.getOrDefault(event.getId(), 0L),
+                        views.getOrDefault(event.getId(), 0L)))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -297,6 +315,85 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toList());
     }
 
+    private EventFullDto toEventFullDto(Event event) {
+        return toEventsFullDto(List.of(event)).get(0);
+    }
+
+    private List<EventFullDto> toEventsFullDto(List<Event> events) {
+        Map<Long, Long> views = getViews(events);
+        Map<Long, Long> confirmedRequests = getConfirmedRequests2(events);
+        return events.stream()
+                .map((event) -> EventMapper.toEventFullDtoWithAll(
+                        event,
+                        confirmedRequests.getOrDefault(event.getId(), 0L),
+                        views.getOrDefault(event.getId(), 0L)))
+                .collect(Collectors.toList());
+    }
+
+    public Map<Long, Long> getViews(List<Event> events) {
+        Map<Long, Long> views = new HashMap<>();
+        List<Event> publishedEvents = getPublished(events);
+        if (events.isEmpty()) {
+            return views;
+        }
+
+        Optional<LocalDateTime> minPublishedOn = getMinPublishedOn(publishedEvents);
+        if (minPublishedOn.isPresent()) {
+            LocalDateTime start = minPublishedOn.get();
+            LocalDateTime end = LocalDateTime.now();
+            String[] uris = getURIs(publishedEvents);
+            List<ResponseStatsDto> stats = getStats(start, end, uris, true);
+            putStats(views, stats);
+        }
+        return views;
+    }
+
+    private Optional<LocalDateTime> getMinPublishedOn(List<Event> publishedEvents) {
+        return publishedEvents.stream()
+                .map(Event::getPublishedOn)
+                .filter(Objects::nonNull)
+                .min(LocalDateTime::compareTo);
+    }
+
+    private void putStats(Map<Long, Long> views, List<ResponseStatsDto> stats) {
+        stats.forEach(stat -> {
+            Long eventId = Long.parseLong(stat.getUri()
+                    .split("/", 0)[2]);
+            views.put(eventId, views.getOrDefault(eventId, 0L) + stat.getHits());
+        });
+    }
+
+    private List<Event> getPublished(List<Event> events) {
+        return events.stream()
+                .filter(event -> event.getPublishedOn() != null)
+                .collect(Collectors.toList());
+    }
+
+    private String[] getURIs(List<Event> publishedEvents) {
+        return publishedEvents.stream()
+                .map(Event::getId)
+                .map(id -> ("/events/" + id))
+                .toArray(String[]::new);
+    }
+
+    public Map<Long, Long> getConfirmedRequests2(List<Event> events) {
+        List<Long> eventsId = getPublished(events).stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+        Map<Long, Long> requestStats = new HashMap<>();
+        if (!eventsId.isEmpty()) {
+            requestRepository.findConfirmedRequests(eventsId)
+                    .forEach(stat -> requestStats.put(stat.getEventId(), stat.getConfirmedRequests()));
+        }
+        return requestStats;
+    }
+
+    private void checkStartIsBeforeEnd(LocalDateTime rangeStart, LocalDateTime rangeEnd) {
+        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+            throw new ResponseException(HttpStatus.BAD_REQUEST, "INVALID_DATES");
+        }
+    }
+
     private void validDateParam(LocalDateTime rangeStart, LocalDateTime rangeEnd) {
         if (rangeStart != null && rangeEnd != null) {
             if (rangeEnd.isBefore(rangeStart)) {
@@ -311,68 +408,6 @@ public class EventServiceImpl implements EventService {
         }
         return rangeStart;
     }
-
-//    @Override
-//    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<String> states, List<Long> categories,
-//                                                     LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
-//                                                     Integer size) {
-//        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-//            throw new ValidationException("Некорректный запрос.");
-//        }
-//        Specification<Event> specification = Specification.where(null);
-//        if (users != null) {
-//            specification = specification.and((root, query, criteriaBuilder) ->
-//                    root.get("initiator").get("id").in(users));
-//        }
-//        if (states != null) {
-//            specification = specification.and((root, query, criteriaBuilder) ->
-//                    root.get("state").as(String.class).in(states));
-//        }
-//        if (categories != null) {
-//            specification = specification.and((root, query, criteriaBuilder) ->
-//                    root.get("category").get("id").in(categories));
-//        }
-//        if (rangeStart != null) {
-//            specification = specification.and((root, query, criteriaBuilder) ->
-//                    criteriaBuilder.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
-//        }
-//        if (rangeEnd != null) {
-//            specification = specification.and((root, query, criteriaBuilder) ->
-//                    criteriaBuilder.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
-//        }
-//        List<Event> events = eventRepository.findAll(specification, PageRequest.of(from / size, size)).getContent();
-//        List<EventFullDto> result = new ArrayList<>();
-//        String[] uris = events.stream()
-//                .map(event -> String.format("/events/%s", event.getId()))
-//                .toArray(String[]::new);
-//        LocalDateTime start = events.stream()
-//                .map(Event::getCreatedOn)
-//                .min(LocalDateTime::compareTo)
-//                .orElseThrow(() -> new NotFoundException("Время начала не найдено."));
-//        StatsRequestDto statsRequestDto = StatsRequestDto.builder()
-//                .start(start)
-//                .end(LocalDateTime.now())
-//                .uris(uris)
-//                .isUnique(true)
-//                .build();
-//        List<Long> ids = events.stream().map(Event::getId).collect(Collectors.toList());
-//        Map<Long, Long> confirmedRequests = requestRepository.findAllByEventIdInAndStatus(ids, CONFIRMED).stream()
-//                .collect(Collectors.toMap(ConfirmedRequests::getEvent, ConfirmedRequests::getCount));
-//        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto);
-//        for (Event event : events) {
-//            ObjectMapper mapper = new ObjectMapper();
-//            List<ResponseStatsDto> statsDto = mapper.convertValue(response.getBody(), new TypeReference<>() {
-//            });
-//            if (!statsDto.isEmpty()) {
-//                result.add(EventMapper.toEventFullDtoWithViews(event, statsDto.get(0).getHits(),
-//                        confirmedRequests.getOrDefault(event.getId(), 0L)));
-//            } else {
-//                result.add(EventMapper.toEventFullDtoWithViews(event, 0L,
-//                        confirmedRequests.getOrDefault(event.getId(), 0L)));
-//            }
-//        }
-//        return result;
-//    }
 
     private void setStatus(Collection<Request> requests, RequestStatus status, long freePlaces) {
         if (status.equals(RequestStatus.CONFIRMED)) {
@@ -436,7 +471,7 @@ public class EventServiceImpl implements EventService {
                 .uris(uris)
                 .isUnique(unique)
                 .build();
-        ResponseEntity<List<ResponseStatsDto>> response = statsClient.getStats(statsRequestDto);
+        ResponseEntity<Object> response = statsClient.getStats(statsRequestDto);
         try {
             return Arrays.asList(mapper.readValue(mapper.writeValueAsString(response.getBody()), ResponseStatsDto[].class));
         } catch (JsonProcessingException e) {

@@ -1,11 +1,13 @@
 package ru.practicum;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 import ru.practicum.dto.ResponseStatsDto;
 import ru.practicum.dto.StatHitDto;
 import ru.practicum.dto.StatsRequestDto;
@@ -21,8 +23,8 @@ public class StatsClient {
 
     private final WebClient client;
 
-    public StatsClient(String baseUrl) {
-        this.client = WebClient.create("http://localhost/9090)");
+    public StatsClient(@Value("${stats-server.url}")String baseUrl) {
+        this.client = WebClient.create(baseUrl);
     }
 
     public void saveHits(HttpServletRequest request) {
@@ -33,7 +35,8 @@ public class StatsClient {
         this.client.post()
                 .uri("/hit")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(endpointHit, StatHitDto.class)
+                .body(Mono.just(endpointHit), StatHitDto.class)
+                //.body(endpointHit, StatHitDto.class)
                 .retrieve()
                 .toBodilessEntity()
                 .block();
@@ -54,4 +57,8 @@ public class StatsClient {
                 .toEntityList(ResponseStatsDto.class)
                 .block();
     }
+
+
+
+
 }

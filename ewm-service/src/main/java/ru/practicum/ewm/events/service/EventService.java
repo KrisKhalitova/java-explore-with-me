@@ -1,6 +1,7 @@
 package ru.practicum.ewm.events.service;
 
 import ru.practicum.ewm.events.dto.*;
+import ru.practicum.ewm.events.model.Event;
 import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
@@ -35,4 +36,6 @@ public interface EventService {
     List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
                                   LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
                                   Integer size, HttpServletRequest request);
+
+    List<EventShortDto> toEventsShortDto(List<Event> events);
 }
