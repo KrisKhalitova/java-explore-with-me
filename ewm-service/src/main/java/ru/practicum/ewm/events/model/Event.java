@@ -11,7 +11,8 @@ import java.time.LocalDateTime;
 
 @Builder
 @Entity
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "events")
