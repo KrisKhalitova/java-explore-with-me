@@ -2,24 +2,19 @@ package ru.practicum.ewm.events.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.StatsClient;
 import ru.practicum.dto.ResponseStatsDto;
 import ru.practicum.dto.StatsRequestDto;
-import ru.practicum.ewm.categories.mapper.CategoryMapper;
 import ru.practicum.ewm.categories.model.Category;
 import ru.practicum.ewm.categories.repository.CategoryRepository;
-import ru.practicum.ewm.categories.service.CategoryService;
-import ru.practicum.ewm.client.StatsClient2;
 import ru.practicum.ewm.events.dto.*;
 import ru.practicum.ewm.events.mapper.EventMapper;
 import ru.practicum.ewm.events.model.Event;
@@ -29,12 +24,11 @@ import ru.practicum.ewm.events.model.StateActionPrivate;
 import ru.practicum.ewm.events.repository.EventRepository;
 import ru.practicum.ewm.exceptions.ConflictException;
 import ru.practicum.ewm.exceptions.NotFoundException;
-import ru.practicum.ewm.exceptions.ValidationException;
 import ru.practicum.ewm.exceptions.ResponseException;
+import ru.practicum.ewm.exceptions.ValidationException;
 import ru.practicum.ewm.locations.mapper.LocationMapper;
 import ru.practicum.ewm.locations.model.Location;
 import ru.practicum.ewm.locations.repository.LocationRepository;
-import ru.practicum.ewm.requests.dto.ConfirmedRequestsDto;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
@@ -60,19 +54,15 @@ import static ru.practicum.ewm.requests.model.RequestStatus.CONFIRMED;
 @Slf4j
 @RequiredArgsConstructor
 @Transactional
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class EventServiceImpl implements EventService {
 
-    final EventRepository eventRepository;
-    final UserRepository userRepository;
-    final CategoryRepository categoryRepository;
-    final CategoryService categoryService;
-    final LocationRepository locationRepository;
-    final RequestRepository requestRepository;
-    final StatsClient2 statsClient;
-    final ObjectMapper mapper = new ObjectMapper();
-    @Value("${app}")
-    private String appName;
+    private final EventRepository eventRepository;
+    private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+    private final LocationRepository locationRepository;
+    private final RequestRepository requestRepository;
+    private final StatsClient statsClient;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     @Override
     public EventFullDto addNewEvent(Long userId, NewEventDto newEventDto) {
@@ -83,12 +73,7 @@ public class EventServiceImpl implements EventService {
         Category category = categoryRepository.findById(catId).orElseThrow(() ->
                 new NotFoundException("Категория не найдена."));
         Location location = checkLocation(LocationMapper.toLocation(newEventDto.getLocation()));
-        Event event = EventMapper.toEvent(newEventDto);
-        event.setInitiator(user);
-        event.setCategory(category);
-        event.setLocation(location);
-        event.setCreatedOn(LocalDateTime.now());
-        event.setState(State.PENDING);
+        Event event = EventMapper.toEvent(newEventDto, user, category, location);
         return EventMapper.toEventFullDto(eventRepository.save(event), 0L);
     }
 
@@ -100,44 +85,12 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventFullDto updateEventByOwner(Long userId, Long eventId, UpdateEventUserRequest updateEvent) {
+    public EventFullDto updateEventByOwner(Long userId, Long eventId, UpdateEventRequest updateEvent) {
         Event event = getEvent(eventId, userId);
         if (event.getState() == PUBLISHED) {
             throw new ConflictException("Опубликованное событие не может быть изменено.");
         }
-        String annotation = updateEvent.getAnnotation();
-        if (annotation != null && !annotation.isBlank()) {
-            event.setAnnotation(annotation);
-        }
-        if (updateEvent.getCategory() != null) {
-            event.setCategory(CategoryMapper.toCategory(categoryService.getCategoryById(updateEvent.getCategory())));
-        }
-        String description = updateEvent.getDescription();
-        if (description != null && !description.isBlank()) {
-            event.setDescription(description);
-        }
-        LocalDateTime eventDate = updateEvent.getEventDate();
-        if (eventDate != null) {
-            checkActualTime(eventDate);
-            event.setEventDate(eventDate);
-        }
-        if (updateEvent.getLocation() != null) {
-            Location location = checkLocation(LocationMapper.toLocation(updateEvent.getLocation()));
-            event.setLocation(location);
-        }
-        if (updateEvent.getPaid() != null) {
-            event.setPaid(updateEvent.getPaid());
-        }
-        if (updateEvent.getParticipantLimit() != null) {
-            event.setParticipantLimit(updateEvent.getParticipantLimit());
-        }
-        if (updateEvent.getRequestModeration() != null) {
-            event.setRequestModeration(updateEvent.getRequestModeration());
-        }
-        String title = updateEvent.getTitle();
-        if (title != null && !title.isBlank()) {
-            event.setTitle(title);
-        }
+        updateParams(event, updateEvent);
         if (updateEvent.getStateAction() != null) {
             StateActionPrivate stateActionPrivate = StateActionPrivate.valueOf(updateEvent.getStateAction());
             if (stateActionPrivate.equals(SEND_TO_REVIEW)) {
@@ -151,7 +104,7 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateEvent) {
+    public EventFullDto updateEventByAdmin(Long eventId, UpdateEventRequest updateEvent) {
         Event event = getEvent(eventId);
         if (updateEvent.getStateAction() != null) {
             StateActionAdmin stateAction = StateActionAdmin.valueOf(updateEvent.getStateAction());
@@ -168,38 +121,7 @@ public class EventServiceImpl implements EventService {
                 event.setState(State.CANCELED);
             }
         }
-        String annotation = updateEvent.getAnnotation();
-        if (annotation != null && !annotation.isBlank()) {
-            event.setAnnotation(annotation);
-        }
-        if (updateEvent.getCategory() != null) {
-            event.setCategory(CategoryMapper.toCategory(categoryService.getCategoryById(updateEvent.getCategory())));
-        }
-        String description = updateEvent.getDescription();
-        if (description != null && !description.isBlank()) {
-            event.setDescription(description);
-        }
-        LocalDateTime eventDate = updateEvent.getEventDate();
-        if (eventDate != null) {
-            checkActualTime(eventDate);
-            event.setEventDate(eventDate);
-        }
-        if (updateEvent.getLocation() != null) {
-            event.setLocation(checkLocation(LocationMapper.toLocation(updateEvent.getLocation())));
-        }
-        if (updateEvent.getPaid() != null) {
-            event.setPaid(updateEvent.getPaid());
-        }
-        if (updateEvent.getParticipantLimit() != null) {
-            event.setParticipantLimit(updateEvent.getParticipantLimit());
-        }
-        if (updateEvent.getRequestModeration() != null) {
-            event.setRequestModeration(updateEvent.getRequestModeration());
-        }
-        String title = updateEvent.getTitle();
-        if (title != null && !title.isBlank()) {
-            event.setTitle(title);
-        }
+        updateParams(event, updateEvent);
         return EventMapper.toEventFullDto(eventRepository.save(event),
                 requestRepository.countByEventIdAndStatus(eventId, CONFIRMED));
     }
@@ -219,20 +141,19 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getEventsByOwner(Long userId, Integer from, Integer size) {
         List<Event> events = eventRepository.findAllByInitiatorId(userId, PageRequest.of(from / size, size));
-        List<Long> ids = events.stream().map(Event::getId).collect(Collectors.toList());
-        Map<Long, Long> confirmedRequests = getConfirmedRequests(ids);
+        Map<Long, Long> confirmedRequests = getConfirmedRequestsByEvents(events);
         return events.stream()
                 .map(event -> EventMapper.toEventShortDto(event, confirmedRequests.getOrDefault(event.getId(), 0L)))
                 .collect(Collectors.toList());
     }
 
     @Override
-    public List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
-                                         LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
-                                         Integer size, HttpServletRequest request) {
-        checkStartIsBeforeEnd(rangeStart, rangeEnd);
-        PageRequest pageable = PageRequest.of(from / size, size);
-        List<Event> events = eventRepository.findAllByPublic(text, categories, paid, rangeStart, rangeEnd, onlyAvailable, pageable);
+    public List<EventShortDto> getEvents(ParamsPublicEventDto params, Integer from, Integer size,
+                                         HttpServletRequest request) {
+        checkStartIsBeforeEnd(params.getRangeStart(), params.getRangeEnd());
+        PageRequest pageable = new EwmPageRequest(from, size, Sort.unsorted());
+        List<Event> events = eventRepository.findAllByPublic(params.getText(), params.getCategories(),
+                params.getPaid(), params.getRangeStart(), params.getRangeEnd(), params.getOnlyAvailable(), pageable);
         statsClient.saveHits(request);
         return toEventsShortDto(events);
     }
@@ -240,7 +161,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> toEventsShortDto(List<Event> events) {
         Map<Long, Long> views = getViews(events);
-        Map<Long, Long> confirmedRequests = getConfirmedRequests2(events);
+        Map<Long, Long> confirmedRequests = getConfirmedRequestsByEvents(events);
         return events.stream()
                 .map((event) -> EventMapper.toEventShortDtoWithConfirmedRequestsAndViews(
                         event,
@@ -304,12 +225,12 @@ public class EventServiceImpl implements EventService {
     }
 
     @Override
-    public List<EventFullDto> getEventsByAdminParams(List<Long> users, List<State> states, List<Long> categories, LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from, Integer size) {
-        validDateParam(rangeStart, rangeEnd);
+    public List<EventFullDto> getEventsByAdminParams(ParamsAdminEventDto params, Integer from, Integer size) {
+        validDateParam(params.getRangeStart(), params.getRangeEnd());
         PageRequest pageable = new EwmPageRequest(from, size, Sort.unsorted());
-        List<Event> events = eventRepository.findAllForAdmin(users, states, categories, getRangeStart(rangeStart),
-                pageable);
-        Map<Long, Long> confReqs = getConfirmedRequests(events.stream().map(Event::getId).collect(Collectors.toList()));
+        List<Event> events = eventRepository.findAllForAdmin(params.getUsers(), params.getStates(),
+                params.getCategories(), getRangeStart(params.getRangeStart()), pageable);
+        Map<Long, Long> confReqs = getConfirmedRequestsByEvents(events);
         return events.stream()
                 .map(event -> EventMapper.toEventFullDto(event, confReqs.getOrDefault(event.getId(), 0L)))
                 .collect(Collectors.toList());
@@ -321,7 +242,7 @@ public class EventServiceImpl implements EventService {
 
     private List<EventFullDto> toEventsFullDto(List<Event> events) {
         Map<Long, Long> views = getViews(events);
-        Map<Long, Long> confirmedRequests = getConfirmedRequests2(events);
+        Map<Long, Long> confirmedRequests = getConfirmedRequestsByEvents(events);
         return events.stream()
                 .map((event) -> EventMapper.toEventFullDtoWithAll(
                         event,
@@ -376,7 +297,7 @@ public class EventServiceImpl implements EventService {
                 .toArray(String[]::new);
     }
 
-    public Map<Long, Long> getConfirmedRequests2(List<Event> events) {
+    public Map<Long, Long> getConfirmedRequestsByEvents(List<Event> events) {
         List<Long> eventsId = getPublished(events).stream()
                 .map(Event::getId)
                 .collect(Collectors.toList());
@@ -458,12 +379,6 @@ public class EventServiceImpl implements EventService {
                 new NotFoundException("Событие не найдено."));
     }
 
-    private Map<Long, Long> getConfirmedRequests(List<Long> ids) {
-        return requestRepository.findAllByEventIdInAndStatus(ids, RequestStatus.CONFIRMED)
-                .stream()
-                .collect(Collectors.toMap(ConfirmedRequestsDto::getEvent, ConfirmedRequestsDto::getCount));
-    }
-
     private List<ResponseStatsDto> getStats(LocalDateTime start, LocalDateTime end, String[] uris, Boolean unique) {
         StatsRequestDto statsRequestDto = StatsRequestDto.builder()
                 .start(start)
@@ -476,6 +391,44 @@ public class EventServiceImpl implements EventService {
             return Arrays.asList(mapper.readValue(mapper.writeValueAsString(response.getBody()), ResponseStatsDto[].class));
         } catch (JsonProcessingException e) {
             throw new ValidationException(e.getMessage());
+        }
+    }
+
+    private void updateParams(Event event, UpdateEventRequest updateEvent) {
+        String annotation = updateEvent.getAnnotation();
+        if (annotation != null && !annotation.isBlank()) {
+            event.setAnnotation(annotation);
+        }
+        if (updateEvent.getCategory() != null) {
+            Long categoryId = updateEvent.getCategory();
+            Category category = categoryRepository.findById(categoryId).orElseThrow(() ->
+                    new NotFoundException("Категория не найдена."));
+            event.setCategory(category);
+        }
+        String description = updateEvent.getDescription();
+        if (description != null && !description.isBlank()) {
+            event.setDescription(description);
+        }
+        LocalDateTime eventDate = updateEvent.getEventDate();
+        if (eventDate != null) {
+            checkActualTime(eventDate);
+            event.setEventDate(eventDate);
+        }
+        if (updateEvent.getLocation() != null) {
+            event.setLocation(checkLocation(LocationMapper.toLocation(updateEvent.getLocation())));
+        }
+        if (updateEvent.getPaid() != null) {
+            event.setPaid(updateEvent.getPaid());
+        }
+        if (updateEvent.getParticipantLimit() != null) {
+            event.setParticipantLimit(updateEvent.getParticipantLimit());
+        }
+        if (updateEvent.getRequestModeration() != null) {
+            event.setRequestModeration(updateEvent.getRequestModeration());
+        }
+        String title = updateEvent.getTitle();
+        if (title != null && !title.isBlank()) {
+            event.setTitle(title);
         }
     }
 }

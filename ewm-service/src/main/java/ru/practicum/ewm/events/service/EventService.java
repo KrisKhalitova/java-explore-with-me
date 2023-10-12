@@ -2,13 +2,11 @@ package ru.practicum.ewm.events.service;
 
 import ru.practicum.ewm.events.dto.*;
 import ru.practicum.ewm.events.model.Event;
-import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.ewm.requests.dto.EventRequestStatusUpdateResult;
 import ru.practicum.ewm.requests.dto.RequestDto;
 
 import javax.servlet.http.HttpServletRequest;
-import java.time.LocalDateTime;
 import java.util.List;
 
 public interface EventService {
@@ -18,9 +16,9 @@ public interface EventService {
 
     EventFullDto getEventByOwner(Long userId, Long eventId);
 
-    EventFullDto updateEventByOwner(Long userId, Long eventId, UpdateEventUserRequest updateEvent);
+    EventFullDto updateEventByOwner(Long userId, Long eventId, UpdateEventRequest updateEvent);
 
-    EventFullDto updateEventByAdmin(Long eventId, UpdateEventAdminRequest updateEventAdminRequest);
+    EventFullDto updateEventByAdmin(Long eventId, UpdateEventRequest updateEventAdminRequest);
 
     EventFullDto getEventByPublic(Long eventId, HttpServletRequest request);
 
@@ -29,12 +27,10 @@ public interface EventService {
 
     List<RequestDto> getRequestsByEventOwner(Long userId, Long eventId);
 
-    List<EventFullDto> getEventsByAdminParams(List<Long> users, List<State> states, List<Long> categories,
-                                              LocalDateTime rangeStart, LocalDateTime rangeEnd, Integer from,
+    List<EventFullDto> getEventsByAdminParams(ParamsAdminEventDto paramsAdminEventDto, Integer from,
                                               Integer size);
 
-    List<EventShortDto> getEvents(String text, List<Long> categories, Boolean paid, LocalDateTime rangeStart,
-                                  LocalDateTime rangeEnd, Boolean onlyAvailable, String sort, Integer from,
+    List<EventShortDto> getEvents(ParamsPublicEventDto paramsPublicEventDto, Integer from,
                                   Integer size, HttpServletRequest request);
 
     List<EventShortDto> toEventsShortDto(List<Event> events);

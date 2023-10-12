@@ -9,13 +9,9 @@ import ru.practicum.ewm.categories.model.Category;
 public class CategoryMapper {
 
     public Category toCategoryFromNewCategoryDto(NewCategoryDto newCategoryDto) {
-        return new Category(newCategoryDto.getName());
-    }
-
-    public Category toCategory(CategoryDto categoryDto) {
-        return new Category(
-                categoryDto.getId(),
-                categoryDto.getName());
+        Category category = new Category();
+        category.setName(newCategoryDto.getName());
+        return category;
     }
 
     public CategoryDto toCategoryDto(Category category) {

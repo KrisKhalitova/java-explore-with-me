@@ -2,29 +2,38 @@ package ru.practicum.ewm.events.mapper;
 
 import lombok.experimental.UtilityClass;
 import ru.practicum.ewm.categories.mapper.CategoryMapper;
+import ru.practicum.ewm.categories.model.Category;
 import ru.practicum.ewm.events.dto.EventFullDto;
 import ru.practicum.ewm.events.dto.EventShortDto;
 import ru.practicum.ewm.events.dto.NewEventDto;
 import ru.practicum.ewm.events.model.Event;
+import ru.practicum.ewm.events.model.State;
 import ru.practicum.ewm.locations.mapper.LocationMapper;
+import ru.practicum.ewm.locations.model.Location;
 import ru.practicum.ewm.users.mapper.UserMapper;
+import ru.practicum.ewm.users.model.User;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @UtilityClass
 public class EventMapper {
-    public Event toEvent(NewEventDto newEventDto) {
-        return Event.builder()
-                .annotation(newEventDto.getAnnotation())
-                .description(newEventDto.getDescription())
-                .eventDate(newEventDto.getEventDate())
-                .location(LocationMapper.toLocation(newEventDto.getLocation()))
-                .paid(newEventDto.getPaid())
-                .participantLimit(newEventDto.getParticipantLimit())
-                .requestModeration(newEventDto.getRequestModeration())
-                .title(newEventDto.getTitle())
-                .build();
+    public Event toEvent(NewEventDto newEventDto, User user, Category category, Location location) {
+        Event event = new Event();
+        event.setAnnotation(newEventDto.getAnnotation());
+        event.setCategory(category);
+        event.setCreatedOn(LocalDateTime.now());
+        event.setDescription(newEventDto.getDescription());
+        event.setEventDate(newEventDto.getEventDate());
+        event.setInitiator(user);
+        event.setLocation(location);
+        event.setPaid(newEventDto.getPaid());
+        event.setParticipantLimit(newEventDto.getParticipantLimit());
+        event.setRequestModeration(newEventDto.getRequestModeration());
+        event.setState(State.PENDING);
+        event.setTitle(newEventDto.getTitle());
+        return event;
     }
 
     public EventFullDto toEventFullDto(Event event, Long confirmedRequests) {

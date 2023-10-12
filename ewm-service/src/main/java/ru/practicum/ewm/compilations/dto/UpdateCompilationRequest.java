@@ -1,13 +1,15 @@
 package ru.practicum.ewm.compilations.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.validation.constraints.Size;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class UpdateCompilationRequest {
@@ -17,8 +19,4 @@ public class UpdateCompilationRequest {
 
     @Size(min = 1, max = 50)
     private String title;
-
-    public Boolean getPinned() {
-        return pinned;
-    }
 }

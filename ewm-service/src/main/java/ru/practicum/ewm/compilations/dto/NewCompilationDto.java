@@ -1,28 +1,26 @@
 package ru.practicum.ewm.compilations.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class NewCompilationDto {
 
     private List<Long> events = new ArrayList<>();
 
-    private boolean pinned = false;
+    private Boolean pinned = false;
 
     @NotBlank
     @Size(min = 1, max = 50)
     private String title;
-
-    public Boolean getPinned() {
-        return pinned;
-    }
 }

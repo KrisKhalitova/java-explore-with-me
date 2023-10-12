@@ -11,6 +11,7 @@ import ru.practicum.ewm.events.model.State;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
@@ -18,7 +19,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     Optional<Event> findByIdAndInitiatorId(Long eventId, Long userId);
 
-    List<Event> findAllByIdIn(List<Long> events);
+    Set<Event> findAllByIdIn(List<Long> events);
 
     boolean existsByCategoryId(Long catId);
 

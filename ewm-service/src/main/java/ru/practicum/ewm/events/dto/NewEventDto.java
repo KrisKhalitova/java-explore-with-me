@@ -1,11 +1,10 @@
 package ru.practicum.ewm.events.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.experimental.FieldDefaults;
+import lombok.Setter;
 import ru.practicum.ewm.locations.dto.LocationDto;
 
 import javax.validation.Valid;
@@ -14,42 +13,42 @@ import java.time.LocalDateTime;
 
 import static ru.practicum.ewm.util.Constant.DATE_TIME_PATTERN;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
-@FieldDefaults(level = AccessLevel.PRIVATE)
 public class NewEventDto {
 
     @Size(min = 20, max = 2000)
     @NotBlank
-    String annotation;
+    private String annotation;
 
     @NotNull
-    Long category;
+    private Long category;
 
     @Size(min = 20, max = 7000)
     @NotBlank
-    String description;
+    private String description;
 
     @NotNull
     @Future
     @JsonFormat(pattern = DATE_TIME_PATTERN)
-    LocalDateTime eventDate;
+    private LocalDateTime eventDate;
 
     @NotNull
     @Valid
-    LocationDto location;
+    private LocationDto location;
 
-    boolean paid = false;
+    private boolean paid = false;
 
     @PositiveOrZero
-    int participantLimit = 0;
+    private int participantLimit = 0;
 
-    boolean requestModeration = true;
+    private boolean requestModeration = true;
 
     @Size(min = 3, max = 120)
     @NotBlank
-    String title;
+    private String title;
 
     public Boolean getPaid() {
         return paid;

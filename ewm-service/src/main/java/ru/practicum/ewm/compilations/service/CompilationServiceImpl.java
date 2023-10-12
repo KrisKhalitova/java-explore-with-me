@@ -34,13 +34,8 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     public CompilationDto addNewCompilation(NewCompilationDto newCompilationDto) {
         Compilation compilation = CompilationMapper.toCompilation(newCompilationDto);
-        if (newCompilationDto.getPinned() != null) {
-            compilation.setPinned(newCompilationDto.getPinned());
-        } else {
-            compilation.setPinned(false);
-        }
         List<Long> eventsId = newCompilationDto.getEvents();
-        List<Event> events = getEventsFromNewCompilationDto(newCompilationDto);
+        Set<Event> events = getEventsFromNewCompilationDto(newCompilationDto);
         if (eventsId != null) {
             compilation.setEvents(events);
         }
@@ -49,16 +44,16 @@ public class CompilationServiceImpl implements CompilationService {
         return CompilationMapper.toCompilationDtoWithEvents(savedCompilation, eventsShortDto);
     }
 
-    private List<Event> getEventsFromNewCompilationDto(NewCompilationDto newCompilationDto) {
+    private Set<Event> getEventsFromNewCompilationDto(NewCompilationDto newCompilationDto) {
         if (!newCompilationDto.getEvents().isEmpty()) {
-            List<Event> events = eventRepository.findAllByIdIn(newCompilationDto.getEvents());
+            Set<Event> events = eventRepository.findAllByIdIn(newCompilationDto.getEvents());
             checkSize(events, newCompilationDto.getEvents());
             return events;
         }
-        return Collections.EMPTY_LIST;
+        return Collections.EMPTY_SET;
     }
 
-    private void checkSize(List<Event> events, List<Long> eventsIdToUpdate) {
+    private void checkSize(Set<Event> events, List<Long> eventsIdToUpdate) {
         if (events.size() != eventsIdToUpdate.size()) {
             throw new ResponseException(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND");
         }
@@ -78,7 +73,7 @@ public class CompilationServiceImpl implements CompilationService {
 
         List<Long> eventsId = updatedCompilation.getEvents();
         if (updatedCompilation.getEvents() != null && !updatedCompilation.getEvents().isEmpty()) {
-            List<Event> events = eventRepository.findAllByIdIn(eventsId);
+            Set<Event> events = eventRepository.findAllByIdIn(eventsId);
             toUpdate.setEvents(events);
         }
         Compilation updated = compilationRepository.save(toUpdate);
@@ -111,7 +106,7 @@ public class CompilationServiceImpl implements CompilationService {
         Compilation compilation = compilationRepository.findById(compId).orElseThrow(() ->
                 new NotFoundException("Подборка событий не найдена"));
         List<Long> eventsId = compilation.getEvents().stream().map(Event::getId).collect(Collectors.toList());
-        List<Event> events = eventRepository.findAllByIdIn(eventsId);
+        Set<Event> events = eventRepository.findAllByIdIn(eventsId);
         compilation.setEvents(events);
         List<EventShortDto> eventsShortDto = EventMapper.toEventShortDtoList(new ArrayList<>(events));
         return CompilationMapper.toCompilationDtoWithEvents(compilation, eventsShortDto);

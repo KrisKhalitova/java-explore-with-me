@@ -1,10 +1,12 @@
 package ru.practicum.ewm.requests.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 @AllArgsConstructor
-@Data
+@Getter
+@Setter
 public class ConfirmedRequestsDto {
     private Long count;
     private Long event;
