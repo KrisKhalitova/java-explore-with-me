@@ -12,10 +12,10 @@ import javax.validation.constraints.Size;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class NewCommentDto {
+public class UpdateCommentDto {
     @Size(min = 2, max = 2000)
     @NotBlank(message = "Комментарий не может быть пустым.")
     private String text;
 
-    private Long eventId;
+    private Long commentId;
 }

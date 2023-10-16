@@ -2,12 +2,13 @@ package ru.practicum.ewm.comments.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.comments.dto.CommentDto;
 import ru.practicum.ewm.comments.dto.NewCommentDto;
+import ru.practicum.ewm.comments.dto.UpdateCommentDto;
 import ru.practicum.ewm.comments.mapper.CommentMapper;
 import ru.practicum.ewm.comments.model.Comment;
 import ru.practicum.ewm.comments.repository.CommentRepository;
@@ -17,7 +18,6 @@ import ru.practicum.ewm.exceptions.NotFoundException;
 import ru.practicum.ewm.exceptions.ValidationException;
 import ru.practicum.ewm.users.model.User;
 import ru.practicum.ewm.users.repository.UserRepository;
-import ru.practicum.ewm.util.EwmPageRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,9 +36,9 @@ public class CommentServiceImpl implements CommentService {
     private final EventRepository eventRepository;
 
     @Override
-    public CommentDto addComment(Long userId, Long eventId, NewCommentDto newCommentDto) {
+    public CommentDto addComment(Long userId, NewCommentDto newCommentDto) {
         CommentDto commentDto = mapToCommentDto(newCommentDto);
-        Event event = findEventById(eventId);
+        Event event = findEventById(newCommentDto.getEventId());
         User user = findUserById(userId);
 
         if (!event.getState().equals(PUBLISHED)) {
@@ -50,15 +50,34 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public CommentDto updateComment(Long userId, Long commentId, NewCommentDto newCommentDto) {
-        CommentDto commentDto = CommentMapper.mapToCommentDto(newCommentDto);
-        Comment comment = commentRepository.findByIdAndAuthorId(commentId, userId)
+    public CommentDto updateComment(Long userId, UpdateCommentDto updateCommentDto) {
+        CommentDto commentDto = CommentMapper.mapToCommentDtoFromUpdateDto(updateCommentDto);
+        Comment comment = commentRepository.findByIdAndAuthorId(updateCommentDto.getCommentId(), userId)
                 .orElseThrow(() -> new NotFoundException("Комментарий не найден"));
 
         comment.setText(commentDto.getText());
         comment.setUpdated(LocalDateTime.now());
 
         return toCommentDto(commentRepository.save(comment));
+    }
+
+    @Override
+    public CommentDto updateCommentAdmin(UpdateCommentDto updateCommentDto) {
+        CommentDto commentDto = CommentMapper.mapToCommentDtoFromUpdateDto(updateCommentDto);
+        Comment comment = findCommentById(updateCommentDto.getCommentId());
+
+        comment.setText(commentDto.getText());
+        comment.setUpdated(LocalDateTime.now());
+
+        return toCommentDto(commentRepository.save(comment));
+    }
+
+    @Override
+    public CommentDto getCommentByIdPrivate(Long userId, Long commentId) {
+        Comment comment = commentRepository.findByIdAndAuthorId(commentId, userId)
+                .orElseThrow(() -> new NotFoundException("Комментарий не найден"));
+
+        return toCommentDto(comment);
     }
 
     @Override
@@ -73,7 +92,8 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public List<CommentDto> getCommentsByAuthor(Long userId, Integer from, Integer size) {
-        return commentRepository.findAllByAuthorId(userId, new EwmPageRequest(from, size, Sort.unsorted()))
+        Pageable pageable = PageRequest.of(from, size);
+        return commentRepository.findAllByAuthorId(userId, pageable)
                 .stream()
                 .map(CommentMapper::toCommentDto)
                 .collect(Collectors.toList());
@@ -93,7 +113,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public List<CommentDto> getComments(Long eventId, Integer from, Integer size) {
         findEventById(eventId);
-        Pageable pageable = new EwmPageRequest(from, size, Sort.unsorted());
+        Pageable pageable = PageRequest.of(from, size);
         return commentRepository.findAllByEventId(eventId, pageable)
                 .stream()
                 .map(CommentMapper::toCommentDto)
